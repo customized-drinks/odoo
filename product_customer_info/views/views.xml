@@ -1,0 +1,65 @@
+<odoo>
+    <data>
+
+        <record id="view_product_customer_inherit" model="ir.ui.view">
+            <field name="name">product.template.customer.form.inherit</field>
+            <field name="model">product.template</field>
+            <field name="inherit_id" ref="product.product_template_form_view"/>
+            <field name="arch" type="xml">
+                <xpath expr="//page[@name='sales']" position="attributes">
+                    <attribute name="invisible">0</attribute>
+                </xpath>
+                <group name="sale" position="before">
+                    <field name="customer_ids"
+                           context="{'default_product_tmpl_id_2':context.get('product_tmpl_id',active_id), 'product_template_invisible_variant': True}"
+                           nolabel="1" attrs="{'invisible': [('product_variant_count','&gt;',1)]}"/>
+                    <field name="variant_customer_ids"
+                           context="{'default_product_tmpl_id_2': context.get('product_tmpl_id', active_id)}" nolabel="1"
+                           attrs="{'invisible': [('product_variant_count','&lt;=',1)]}"/>
+                </group>
+            </field>
+        </record>
+
+        <record id="product_customer_info_tree_view" model="ir.ui.view">
+            <field name="name">product.customer.info.tree.view</field>
+            <field name="model">product.customer.info</field>
+            <field name="arch" type="xml">
+                <tree string="Customer Information" multi_edit="1">
+                    <field name="partner_id" readonly="1"/>
+                    <field name="company_id" readonly="1" groups="base.group_multi_company"/>
+                    <field name="product_id" readonly="1"
+                           invisible="context.get('product_template_invisible_variant', False)"
+                           groups="product.group_product_variant"/>
+                    <field name="customer_product_name"/>
+                    <field name="customer_product_code"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="product_customer_info_form_view" model="ir.ui.view">
+            <field name="name">product.customer.info.form.view</field>
+            <field name="model">product.customer.info</field>
+            <field name="arch" type="xml">
+                <form string="Customer Information">
+                    <group>
+                        <group name="customer" string="Customer">
+                            <field name="partner_id"/>
+                            <field name="customer_product_name"/>
+                            <field name="customer_product_code"/>
+                            <field name="product_id" groups="product.group_product_variant"
+                                   domain="[('product_tmpl_id', '=', product_tmpl_id_2)]"
+                                    options="{'no_create': True}"/>
+                            <field name="product_tmpl_id" string="Product"
+                                   invisible="context.get('visible_product_tmpl_id', True)"/>
+                            <field name="product_tmpl_id_2" string="Product"
+                                   invisible="1"/>
+                        </group>
+                        <group string="Other Information" groups="base.group_multi_company">
+                            <field name="company_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                </form>
+            </field>
+        </record>
+    </data>
+</odoo>
