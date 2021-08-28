@@ -1,0 +1,14 @@
+<odoo>
+    <template id="stock_report_delivery_package_section_line_inherit"
+              inherit_id="stock.stock_report_delivery_package_section_line">
+        <xpath expr="/t[@t-name='stock.stock_report_delivery_package_section_line']" position="replace">
+            <tr t-att-class="'bg-200 font-weight-bold o_line_section'">
+                <td colspan="99" name="package_info">
+                    <span t-field="package.packaging_id"/>
+                    -
+                    <span t-field="package.name"/>
+                </td>
+            </tr>
+        </xpath>
+    </template>
+</odoo>

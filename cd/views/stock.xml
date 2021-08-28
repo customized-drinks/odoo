@@ -1,0 +1,40 @@
+<odoo>
+    <record id="view_stock_form_inherit" model="ir.ui.view">
+        <field name="name">stock.picking.form</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="/form/header/button[@name='action_confirm']" position="replace">
+<!--                <button name="action_confirm" attrs="{'invisible': [('show_mark_as_todo', '=', False)]}" string="Mark as Todo" type="object" class="oe_highlight" groups="base.group_user"/>-->
+            </xpath>
+            <xpath expr="/form/header/button[@name='button_validate'][1]" position="replace">
+                <button name="button_validate" attrs="{'invisible': [('state', 'in', ('waiting', 'confirmed', 'done'))]}" string="Validate" type="object" class="oe_highlight" groups="stock.group_stock_user"/>
+            </xpath>
+            <xpath expr="/form/header/button[@name='button_validate'][2]" position="replace">
+                <button name="button_validate" attrs="{'invisible': ['|', ('state', 'not in', ('waiting', 'confirmed', 'processing')), ('show_validate', '=', False)]}" string="Validate" type="object" groups="stock.group_stock_user" class="o_btn_validate"/>
+            </xpath>
+            <xpath expr="/form/header/button[@name='do_unreserve']" position="before">
+                <button name="set_processing" string="Process" groups="base.group_user" type="object" attrs="{'invisible': ['|', '|', ('immediate_transfer', '=', True), '&amp;', ('state', 'not in', ('assigned', 'partially_available')), ('move_type', '!=', 'one'), '&amp;', ('state', 'not in', ('assigned', 'partially_available', 'confirmed')), ('move_type', '=', 'one')]}"/>
+            </xpath>
+            <xpath expr="/form/header/button[@name='do_unreserve']" position="replace">
+                <button name="do_unreserve" string="Unreserve" groups="base.group_user" type="object" attrs="{'invisible': ['|', '|', '|', ('picking_type_code', '=', 'incoming'), ('immediate_transfer', '=', True), '&amp;', ('state', 'not in', ('assigned', 'partially_available', 'processing')), ('move_type', '!=', 'one'), '&amp;', ('state', 'not in', ('assigned', 'partially_available', 'confirmed', 'processing')), ('move_type', '=', 'one')]}"/>
+            </xpath>
+            <xpath expr="/form/header/field[@name='state']" position="replace">
+                <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,assigned,processing,done" />
+            </xpath>
+            <xpath expr="/form/sheet/group/group/field[@name='partner_id']" position="replace">
+                <field name="partner_id" nolabel="1" widget="res_partner_many2one" context="{'res_partner_search_mode': 'customer', 'show_address': 1}" options="{&quot;always_reload&quot;: True}"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_picking_internal_search_inherit" model="ir.ui.view">
+        <field name="name">stock.picking.internal.search</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="/search/filter[@name='done']" position="before">
+                <filter name="processing" string="Processing" domain="[('state', '=', 'processing')]" help="Pickings being processed"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

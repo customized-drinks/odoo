@@ -1,0 +1,136 @@
+<odoo>
+    <template id="external_layout_din5008_inherit" inherit_id="l10n_de.external_layout_din5008">
+        <xpath expr="/t[@t-name='l10n_de.external_layout_din5008']" position="replace">
+            <div>
+                <div t-attf-class="header din_page o_company_#{company.id}_layout">
+                    <table class="company_header" t-att-style="'height: %dmm;' % (din_header_spacing or 27)">
+                        <tr>
+                            <td>
+                                <h3 class="mt0" t-field="company.report_header"/>
+                            </td>
+                            <td>
+                                <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
+                                     t-att-style="'max-height: %dmm;' % (din_header_spacing or 27)"/>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                <div t-attf-class="din_page invoice_note article o_company_#{company.id}_layout"
+                     t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id">
+                    <table>
+                        <tr>
+                            <td>
+                                <div class="address">
+                                    <t>
+                                    </t>
+                                    <hr class="company_invoice_line"/>
+                                    <div t-if="address">
+                                        <t t-raw="address"/>
+                                    </div>
+                                    <div t-else="fallback_address">
+                                        <t t-esc="fallback_address"
+                                           t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;], &quot;no_marker&quot;: True}"/>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="information_block">
+                                    <t t-if="'l10n_de_template_data' in company" t-set="template_data"
+                                       t-value="company.l10n_de_template_data"/>
+                                    <t t-if="o and 'l10n_de_template_data' in o" t-set="template_data"
+                                       t-value="o.l10n_de_template_data"/>
+                                    <table>
+                                        <t t-foreach="template_data" t-as="row">
+                                            <tr>
+                                                <td>
+                                                    <t t-esc="row[0]"/>
+                                                </td>
+                                                <td>
+                                                    <t t-esc="row[1]"/>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </table>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr t-if="o and 'l10n_de_addresses' in o">
+                            <t t-foreach="o.l10n_de_addresses" t-as="doc_address">
+                                <td>
+                                    <div class="shipping_address">
+                                        <strong>
+                                            <t t-esc="doc_address[0]"/>
+                                        </strong>
+                                        <div t-esc="doc_address[1]"
+                                             t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;], &quot;no_marker&quot;: True}"/>
+                                    </div>
+                                </td>
+                            </t>
+                        </tr>
+                    </table>
+                    <h2>
+                        <span t-if="not o">
+                            <t t-esc="company.l10n_de_document_title"/>
+                        </span>
+                        <span t-elif="'l10n_de_document_title' in o">
+                            <t t-esc="o.l10n_de_document_title"/>
+                        </span>
+                    </h2>
+                    <t t-raw="0"/>
+                </div>
+
+                <div t-attf-class="din_page footer o_company_#{company.id}_layout">
+                    <div class="text-right page_number">
+                        <div class="text-muted">
+                            Page:
+                            <span class="page"/>
+                            of
+                            <span class="topage"/>
+                        </div>
+                    </div>
+                    <div class="company_details">
+                        <table>
+                            <tr>
+                                <td>
+                                    <ul class="list-inline mt-2">
+                                        <li t-if="company.website">braufaesschen.com</li>
+                                        <li t-if="company.phone">
+                                            <span t-field="company.phone"/>
+                                        </li>
+                                        <li t-if="company.email">
+                                            <span t-field="company.email"/>
+                                        </li>
+                                        <li><strong>Geschäftsführer</strong>: Susanne Kistler,<br/>Dominik Guber
+                                        </li>
+                                    </ul>
+                                </td>
+                                <td>
+                                    <ul class="list-inline">
+                                        <li>HypoVereinsbank Freising</li>
+                                        <!--<li>Konto-Nr: 185 93 840</li>
+                                        <li>BLZ: 700 211 80</li>-->
+                                        <li>IBAN: DE63700211800018593840</li>
+                                        <li>BIC: HYVEDEMM418</li>
+                                    </ul>
+                                </td>
+                                <td>
+                                    <ul class="list-inline">
+                                        <li>Amtsgericht München</li>
+                                        <li>HRB-Nr:
+                                            <span t-field="company.company_registry"/>
+                                        </li>
+                                        <li>Steuer-Nr: 143/127/41874</li>
+                                        <li t-if="company.vat"><t t-esc="company.country_id.vat_label or 'Tax ID'"/>:
+                                            <span t-field="company.vat"/>
+                                        </li>
+                                        <div t-field="company.report_footer"/>
+                                    </ul>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </xpath>
+    </template>
+</odoo>
