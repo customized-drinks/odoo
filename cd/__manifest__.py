@@ -29,7 +29,6 @@
         'views/stock.xml',
         'views/templates/external_layout_din5008.xml',
         'views/templates/report_delivery_document.xml',
-        # 'views/templates/report_delivery_document2.xml',
         'views/templates/report_invoice_document.xml',
         'views/templates/report_picking.xml',
         'views/templates/report_saleorder_document.xml',

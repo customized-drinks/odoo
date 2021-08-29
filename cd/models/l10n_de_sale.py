@@ -18,9 +18,9 @@ class SaleOrder(models.Model):
                 if record.name:
                     data.append((_("Quotation No."), record.name))
                 if record.date_order:
-                    data.append((_("Quotation Date"), format_date(self.env, record.date_order)))
+                    data.append((_("Order Date"), format_date(self.env, record.date_order)))
                 if record.validity_date:
-                    data.append((_("Expiration"), format_date(self.env, record.validity_date)))
+                    data.append((_("Expiration Date"), format_date(self.env, record.validity_date)))
             else:
                 if record.name:
                     data.append((_("Order No."), record.name))

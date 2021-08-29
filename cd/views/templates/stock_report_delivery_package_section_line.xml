@@ -7,6 +7,21 @@
                     <span t-field="package.packaging_id"/>
                     -
                     <span t-field="package.name"/>
+
+                    <t t-if="package.shipping_weight or package.weight">
+                        <!-- assume manually typed in value = priority -->
+                        <t t-if="package.shipping_weight">
+                            <span> - Weight: </span>
+                            <span t-field="package.shipping_weight"/>
+                            <span t-field="package.weight_uom_name"/>
+                        </t>
+                        <!-- otherwise default to calculated value -->
+                        <t t-else="">
+                            <span> - Weight (estimated): </span>
+                            <span t-field="package.weight"/>
+                            <span t-field="package.weight_uom_name"/>
+                        </t>
+                    </t>
                 </td>
             </tr>
         </xpath>
