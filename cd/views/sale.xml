@@ -29,4 +29,14 @@
             </xpath>
         </field>
     </record>
+    <record id="view_order_internal_search_inherit" model="ir.ui.view">
+        <field name="name">sale.order.internal.search</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.sale_order_view_search_inherit_quotation"/>
+        <field name="arch" type="xml">
+            <xpath expr="/search/filter[@name='sales']" position="before">
+                <filter name="sent" string="Prepayment Invoices" domain="[('state', '=', 'sent')]" help="Prepayment invoices"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>
