@@ -26,6 +26,10 @@
                                 <strong>Order:</strong>
                                 <p t-field="o.origin"/>
                             </div>
+                            <div class="col-auto" t-if="o.sale_id.client_order_ref" name="reference">
+                                <strong>Reference:</strong>
+                                <p class="m-0" t-field="o.sale_id.client_order_ref"/>
+                            </div>
                             <div t-if="o.state" class="col-auto" name="div_sched_date">
                                 <strong>Shipping Date:</strong>
                                 <t t-if="o.state == 'done'">
@@ -34,10 +38,6 @@
                                 <t t-if="o.state != 'done'">
                                     <p t-field="o.scheduled_date"/>
                                 </t>
-                            </div>
-                            <div t-if="o.picking_type_id.code == 'outgoing' and o.carrier_id" class="col-auto">
-                                <strong>Carrier:</strong>
-                                <p t-field="o.carrier_id"/>
                             </div>
                             <div t-if="o.shipping_weight" class="col-auto">
                                 <strong>Total Weight:</strong>
@@ -154,6 +154,10 @@
                                 </t>
                             </tbody>
                         </table>
+                        <div t-if="o.picking_type_id.code == 'outgoing' and o.carrier_id">
+                            <strong>Carrier:</strong>
+                            <p t-field="o.carrier_id"/>
+                        </div>
                         <div t-if="o.carrier_tracking_ref">
                             <strong>Tracking Numbers:</strong>
                             <p t-field="o.carrier_tracking_ref"/>
