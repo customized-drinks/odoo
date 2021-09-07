@@ -28,10 +28,10 @@ class StockMoveLine(models.Model):
             if line_key not in aggregated_move_lines:
                 aggregated_move_lines[line_key] = {'name': name,
                                                    'description': description,
-                                                   'qty_done': move_line.qty_done,
+                                                   'qty_done': int(move_line.qty_done),
                                                    'product_uom': uom.name,
                                                    'lot': lot.name,
                                                    'product': move_line.product_id}
             else:
-                aggregated_move_lines[line_key]['qty_done'] += move_line.qty_done
+                aggregated_move_lines[line_key]['qty_done'] += int(move_line.qty_done)
         return aggregated_move_lines
