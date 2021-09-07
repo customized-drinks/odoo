@@ -1,0 +1,21 @@
+<odoo>
+    <template id="stock_report_delivery_aggregated_move_lines_inherit" inherit_id="stock.stock_report_delivery_aggregated_move_lines">
+        <xpath expr="/t[@t-name='stock.stock_report_delivery_aggregated_move_lines']" position="replace">
+            <tr t-foreach="aggregated_lines" t-as="line">
+                <td>
+                    <span t-esc="aggregated_lines[line]['name']"/>
+                    <p t-if="aggregated_lines[line]['description']">
+                        <span t-esc="aggregated_lines[line]['description']"/>
+                    </p>
+                </td>
+                <td name="move_line_aggregated_lot">
+                    <span t-esc="aggregated_lines[line]['lot']"/>
+                </td>
+                <td class="text-center" name="move_line_aggregated_qty_done">
+                    <span t-esc="aggregated_lines[line]['qty_done']"/>
+                    <span t-esc="aggregated_lines[line]['product_uom']"/>
+                </td>
+            </tr>
+        </xpath>
+    </template>
+</odoo>

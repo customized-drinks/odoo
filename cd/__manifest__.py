@@ -32,6 +32,7 @@
         'views/templates/report_invoice_document.xml',
         'views/templates/report_picking.xml',
         'views/templates/report_saleorder_document.xml',
+        'views/templates/stock_report_delivery_aggregated_move_lines_inherit.xml',
         'views/templates/stock_report_delivery_package_section_line.xml',
     ]
 }
