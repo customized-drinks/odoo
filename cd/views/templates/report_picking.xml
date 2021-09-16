@@ -103,10 +103,10 @@
                                                 Lot/Serial Number
                                             </th>
                                         </t>
-                                        <th name="th_sml_quantity" class="text-center">
+                                        <th name="th_sml_quantity">
                                             <strong>Quantity</strong>
                                         </th>
-                                        <th name="th_sml_barcode" class="text-center" t-if="has_barcode">
+                                        <th name="th_sml_barcode" t-if="has_barcode">
                                             <strong>Product Barcode</strong>
                                         </th>
                                     </tr>
