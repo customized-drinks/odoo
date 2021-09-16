@@ -104,7 +104,7 @@
                                     <t t-foreach="packages" t-as="package">
                                         <t t-set="counter" t-value="counter + 1"/>
                                     </t>
-                                    <t t-if="counter &gt; 10">
+                                    <t t-if="counter &gt; 0">
                                         <t name="aggregated_move_lines">
                                             <t t-set="aggregated_lines"
                                                t-value="o.move_line_ids._get_aggregated_product_quantities()"/>

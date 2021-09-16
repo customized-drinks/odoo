@@ -25,6 +25,10 @@
                                          style="width:300px;height:50px;" alt="Barcode"/>
                                 </div>
                             </div>
+                            <div t-if="o.note">
+                                <strong>Notes:</strong>
+                                <p t-field="o.note"/>
+                            </div>
                             <div class="row mt32 mb32 mb-3 mt-5">
                                 <div t-if="o.origin" class="col-auto" name="div_origin">
                                     <strong>Order:</strong>
@@ -119,7 +123,7 @@
                                         <t t-foreach="packages" t-as="package">
                                             <t t-set="counter" t-value="counter + 1"/>
                                         </t>
-                                        <t t-if="counter &gt; 10">
+                                        <t t-if="counter &gt; 0">
                                             <t name="aggregated_move_lines">
                                                 <t t-set="aggregated_lines"
                                                    t-value="o.move_line_ids._get_aggregated_product_quantities()"/>
@@ -183,10 +187,6 @@
                                     </t>
                                 </tbody>
                             </table>
-                            <div t-if="o.note">
-                                <strong>Notes:</strong>
-                                <p t-field="o.note"/>
-                            </div>
                             <div t-if="o.signature" class="mt32 ml64 mr4" name="signature">
                                 <div class="offset-8">
                                     <strong>Signature</strong>
