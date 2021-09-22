@@ -20,4 +20,36 @@
             </field>
         </field>
     </record>
+
+    <record id="view_datev_report_tree" model="ir.ui.view">
+        <field name="name">datev.report.tree</field>
+        <field name="model">datev.report</field>
+        <field name="arch" type="xml">
+            <tree string="DATEV Report" create="false" edit="false" sample="1">
+                <field name="move_id"/>
+                <field name="invoice_date"/>
+                <field name="delivery_date"/>
+                <field name="price_subtotal"/>
+                <field name="tax_base_amount"/>
+                <field name="price_total"/>
+                <field name="partner_id"/>
+                <field name="account_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_account_moves_datev" model="ir.actions.act_window">
+<!--        <field name="context">{'journal_type':'general', 'search_default_posted':1}</field>-->
+        <field name="context">{}</field>
+        <field name="name">DATEV Report</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">datev.report</field>
+<!--        <field name="domain">[('display_type', 'not in', ('line_section', 'line_note')), ('move_id.state', '!=', 'cancel')]</field>-->
+        <field name="domain">[]</field>
+        <field name="view_id" ref="view_datev_report_tree"/>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <menuitem id="menu_action_account_moves_datev" action="action_account_moves_datev" parent="account.menu_finance_entries_accounting_miscellaneous" groups="account.group_account_readonly" sequence="15"/>
+
 </odoo>
