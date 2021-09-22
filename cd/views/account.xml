@@ -29,11 +29,16 @@
                 <field name="move_id"/>
                 <field name="invoice_date"/>
                 <field name="delivery_date"/>
+                <field name="quantity"/>
                 <field name="price_subtotal"/>
+                <field name="tax_rate"/>
                 <field name="tax_base_amount"/>
                 <field name="price_total"/>
+                <field name="currency_name"/>
                 <field name="partner_id"/>
                 <field name="account_id"/>
+                <field name="country_code"/>
+                <field name="vat_id"/>
             </tree>
         </field>
     </record>
