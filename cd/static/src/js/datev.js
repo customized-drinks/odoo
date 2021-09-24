@@ -38,6 +38,27 @@ odoo.define('datev_tax_rate_widget', function (require) {
     }
 })
 
+odoo.define('datev_debit_credit_widget', function (require) {
+    'use strict'
+    let AbstractField = require('web.AbstractField')
+    let fieldRegistry = require('web.field_registry')
+    let debitCredit = AbstractField.extend({
+        _renderReadonly: function () {
+            let invoiceNumber = this.recordData.move_id.data.display_name
+            let debitCreditValue = 'H'
+            if (invoiceNumber.includes('RINV')) {
+                debitCreditValue = 'S'
+            }
+            this.value = debitCreditValue
+            this.$el.text(debitCreditValue)
+        },
+    })
+    fieldRegistry.add('datev_debit_credit', debitCredit)
+    return {
+        taxRate: debitCredit,
+    }
+})
+
 odoo.define('datev_account_number_widget', function (require) {
     'use strict'
     let AbstractField = require('web.AbstractField')

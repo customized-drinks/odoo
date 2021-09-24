@@ -26,6 +26,7 @@
         <field name="model">datev.report</field>
         <field name="arch" type="xml">
             <tree string="DATEV Report" create="false" edit="false" sample="1">
+                <field name="id"/>
                 <field name="receivable_code"/>
                 <field name="move_id"/>
                 <field name="invoice_date"/>
@@ -36,6 +37,7 @@
                 <field name="tax_base_amount" widget="datev_tax_amount"/>
                 <field name="price_total"/>
                 <field name="currency_name"/>
+                <field name="debit_credit" widget="datev_debit_credit"/>
                 <field name="partner_id"/>
                 <field name="account_id" widget="datev_account_number"/>
                 <field name="country_code"/>
