@@ -5,7 +5,8 @@ class DatevReport(models.Model):
     _name = 'datev.report'
     _auto = False
 
-    id = fields.Many2one('account.move.line', string='Move Line Id')
+    id = fields.Many2one('account.move.line', string='Move Line ID')
+    property_account_receivable_id = fields.Char(string='Receivable ID')
     invoice_date = fields.Date(string='Invoice Date')
     delivery_date = fields.Date(string='Delivery Date')  # Leistungsdatum
     move_id = fields.Many2one('account.move', string='Invoice No.')
@@ -37,7 +38,8 @@ class DatevReport(models.Model):
                 tax.amount as tax_rate,
                 currency.name as currency_name,
                 country.code as country_code,
-                partner.vat as vat_id
+                partner.vat as vat_id,
+                receivable_account.code as property_account_receivable_id
             FROM
                 account_move_line as line
             LEFT JOIN
@@ -47,9 +49,13 @@ class DatevReport(models.Model):
             LEFT JOIN
                 res_currency as currency ON currency.id = line.currency_id
             LEFT JOIN
-                res_partner as partner ON partner.id = line.partner_id
+                res_partner as partner ON partner.id = move.partner_id
             LEFT JOIN
                 res_country as country ON country.id = partner.country_id
+            LEFT JOIN
+                ir_property as property ON (property.name = 'property_account_receivable_id' AND property.res_id = CONCAT('res.partner,', line.partner_id))
+            LEFT JOIN
+                account_account as receivable_account ON receivable_account.id = ALL(string_to_array(split_part(property.value_reference, ',', 2), ',')::smallint[]) 
             GROUP BY
                 move.date,
                 move.delivery_date,
@@ -60,5 +66,6 @@ class DatevReport(models.Model):
                 tax.amount,
                 currency.name,
                 country.code,
-                partner.vat
+                partner.vat,
+                receivable_account.code
         )""")

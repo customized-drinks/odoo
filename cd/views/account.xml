@@ -26,19 +26,21 @@
         <field name="model">datev.report</field>
         <field name="arch" type="xml">
             <tree string="DATEV Report" create="false" edit="false" sample="1">
+                <field name="id"/>
+                <field name="property_account_receivable_id"/>
                 <field name="move_id"/>
                 <field name="invoice_date"/>
                 <field name="delivery_date"/>
                 <field name="quantity"/>
                 <field name="price_subtotal"/>
-                <field name="tax_rate"/>
-                <field name="tax_base_amount"/>
+                <field name="tax_rate" widget="datev_tax_rate"/>
+                <field name="tax_base_amount" widget="datev_tax_amount"/>
                 <field name="price_total"/>
                 <field name="currency_name"/>
                 <field name="partner_id"/>
                 <field name="account_id"/>
                 <field name="country_code"/>
-                <field name="vat_id"/>
+                <field name="vat_id" widget="datev_vat"/>
             </tree>
         </field>
     </record>

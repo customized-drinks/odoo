@@ -24,6 +24,7 @@
 
     # always loaded
     'data': [
+        'views/assets.xml',
         'views/sale.xml',
         'views/account.xml',
         'views/stock.xml',
