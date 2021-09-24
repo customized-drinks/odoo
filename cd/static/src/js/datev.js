@@ -38,6 +38,25 @@ odoo.define('datev_tax_rate_widget', function (require) {
     }
 })
 
+odoo.define('datev_account_number_widget', function (require) {
+    'use strict'
+    let AbstractField = require('web.AbstractField')
+    let fieldRegistry = require('web.field_registry')
+    let accountNumber = AbstractField.extend({
+        _renderReadonly: function () {
+            let formattedVat = this.value.data.display_name
+            if (formattedVat !== false) {
+                formattedVat = formattedVat.substring(0, 4)
+            }
+            this.value = formattedVat
+            this.$el.text(formattedVat)
+        },
+    })
+    fieldRegistry.add('datev_account_number', accountNumber)
+    return {
+        accountNumber: accountNumber,
+    }
+})
 
 odoo.define('datev_vat', function (require) {
     'use strict'

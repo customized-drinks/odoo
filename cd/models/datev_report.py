@@ -5,8 +5,8 @@ class DatevReport(models.Model):
     _name = 'datev.report'
     _auto = False
 
-    id = fields.Many2one('account.move.line', string='Move Line ID')
-    property_account_receivable_id = fields.Char(string='Receivable ID')
+    id = fields.Many2one('account.move.line', string='Line ID')
+    receivable_code = fields.Char(string='Receivable Code')
     invoice_date = fields.Date(string='Invoice Date')
     delivery_date = fields.Date(string='Delivery Date')  # Leistungsdatum
     move_id = fields.Many2one('account.move', string='Invoice No.')
@@ -39,9 +39,10 @@ class DatevReport(models.Model):
                 currency.name as currency_name,
                 country.code as country_code,
                 partner.vat as vat_id,
-                receivable_account.code as property_account_receivable_id
+                account.code as receivable_code
             FROM
                 account_move_line as line
+        
             LEFT JOIN
                 account_move as move ON move.id = line.move_id
             LEFT JOIN
@@ -55,7 +56,8 @@ class DatevReport(models.Model):
             LEFT JOIN
                 ir_property as property ON (property.name = 'property_account_receivable_id' AND property.res_id = CONCAT('res.partner,', line.partner_id))
             LEFT JOIN
-                account_account as receivable_account ON receivable_account.id = ALL(string_to_array(split_part(property.value_reference, ',', 2), ',')::smallint[]) 
+                account_account as account ON account.id = ALL(string_to_array(split_part(property.value_reference, ',', 2), ',')::smallint[])
+            WHERE line.account_id IN (2510, 2511, 2512, 2513, 2514, 2515)
             GROUP BY
                 move.date,
                 move.delivery_date,
@@ -67,5 +69,6 @@ class DatevReport(models.Model):
                 currency.name,
                 country.code,
                 partner.vat,
-                receivable_account.code
+                account.code
+
         )""")
