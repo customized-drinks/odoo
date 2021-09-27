@@ -27,6 +27,7 @@
             </xpath>
         </field>
     </record>
+
     <record id="view_picking_internal_search_inherit" model="ir.ui.view">
         <field name="name">stock.picking.internal.search</field>
         <field name="model">stock.picking</field>

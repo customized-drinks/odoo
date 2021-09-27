@@ -4,11 +4,18 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
+            <field name="name" position="after">
+                <br/>
+                <field name="name_2"/>
+                <br/>
+                <field name="name_3"/>
+            </field>
             <field name="vat" position="after">
                 <field name="customer_id"/>
             </field>
         </field>
     </record>
+
     <record id="view_order_form_inherit" model="ir.ui.view">
         <field name="name">sale.order.form</field>
         <field name="model">sale.order</field>
@@ -29,6 +36,7 @@
             </xpath>
         </field>
     </record>
+
     <record id="view_order_internal_search_inherit" model="ir.ui.view">
         <field name="name">sale.order.internal.search</field>
         <field name="model">sale.order</field>

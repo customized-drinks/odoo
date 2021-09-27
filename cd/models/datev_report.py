@@ -81,7 +81,6 @@ class CustomCSVExport(CSVExport):
     def format_data(self, data):
         data[2] = format_date(data[2], locale='de_DE')
         if data[3] is not '':
-            # d = datetime.strptime(data[3], "%Y-%m-%d")
             data[3] = format_date(data[3], locale='de_DE')
         account = data[12]
         tax_rate = 0

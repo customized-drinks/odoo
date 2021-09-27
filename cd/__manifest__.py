@@ -28,6 +28,7 @@
         'views/sale.xml',
         'views/account.xml',
         'views/stock.xml',
+        'views/templates/contact.xml',
         'views/templates/external_layout_din5008.xml',
         'views/templates/report_delivery_document.xml',
         'views/templates/report_invoice_document.xml',
