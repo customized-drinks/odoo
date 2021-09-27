@@ -26,7 +26,7 @@
         <field name="model">datev.report</field>
         <field name="arch" type="xml">
             <tree string="DATEV Report" create="false" edit="false" sample="1">
-                <field name="id"/>
+<!--                <field name="id"/>-->
                 <field name="receivable_code"/>
                 <field name="move_id"/>
                 <field name="invoice_date"/>
