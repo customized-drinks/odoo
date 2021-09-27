@@ -13,7 +13,7 @@ class DatevReport(models.Model):
     receivable_code = fields.Char(string='Receivable Code')
     invoice_date = fields.Date(string='Invoice Date')
     delivery_date = fields.Date(string='Delivery Date')  # Leistungsdatum
-    move_id = fields.Many2one('account.move', string='Invoice No.')
+    move_name = fields.Char(string='Invoice No.')
     quantity = fields.Integer('Quantity')
     price_subtotal = fields.Float('Subtotal')
     tax_rate = fields.Integer('Tax Rate')
@@ -25,6 +25,7 @@ class DatevReport(models.Model):
     account_id = fields.Many2one('account.account', string='Account')
     country_code = fields.Char('Country')
     vat_id = fields.Char('VAT')
+    payment_date = fields.Date(string='Payment Date')
 
     def init(self):
         tools.drop_view_if_exists(self._cr, 'datev_report')
@@ -35,6 +36,7 @@ class DatevReport(models.Model):
                 SUM(line.id) as id,
                 line.move_id as move_id,
                 line.move_id as debit_credit,
+                line.move_name as move_name,
                 line.account_id as account_id,
                 line.partner_id as partner_id,
                 SUM(line.quantity) as quantity,
@@ -45,13 +47,16 @@ class DatevReport(models.Model):
                 currency.name as currency_name,
                 country.code as country_code,
                 partner.vat as vat_id,
-                account.code as receivable_code
+                account.code as receivable_code,
+                payment.date as payment_date
             FROM
                 account_move_line as line
             LEFT JOIN
                 account_move as move ON move.id = line.move_id
             LEFT JOIN
                 account_tax as tax ON tax.id = line.tax_line_id
+            LEFT JOIN
+                account_move as payment ON (payment.ref = line.move_name AND payment.move_type = 'entry')
             LEFT JOIN
                 res_currency as currency ON currency.id = line.currency_id
             LEFT JOIN
@@ -64,7 +69,7 @@ class DatevReport(models.Model):
                 account_account as account ON account.id = ALL(string_to_array(split_part(property.value_reference, ',', 2), ',')::smallint[])
             WHERE line.account_id IN (2510, 2511, 2512, 2513, 2514, 2515)
             GROUP BY
-                line.move_id, move.delivery_date, move.date, line.account_id, line.partner_id, currency.name, country.code, partner.vat, account.code
+                line.move_id, line.move_name, move.delivery_date, move.date, line.account_id, line.partner_id, currency.name, country.code, partner.vat, account.code, payment.date
             ORDER BY
                 line.move_id
                 

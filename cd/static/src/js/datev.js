@@ -44,7 +44,7 @@ odoo.define('datev_debit_credit_widget', function (require) {
     let fieldRegistry = require('web.field_registry')
     let debitCredit = AbstractField.extend({
         _renderReadonly: function () {
-            let invoiceNumber = this.recordData.move_id.data.display_name
+            let invoiceNumber = this.recordData.move_name
             let debitCreditValue = 'H'
             if (invoiceNumber.includes('RINV')) {
                 debitCreditValue = 'S'

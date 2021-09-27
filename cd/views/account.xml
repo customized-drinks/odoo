@@ -28,7 +28,7 @@
             <tree string="DATEV Report" create="false" edit="false" sample="1">
 <!--                <field name="id"/>-->
                 <field name="receivable_code"/>
-                <field name="move_id"/>
+                <field name="move_name"/>
                 <field name="invoice_date"/>
                 <field name="delivery_date"/>
                 <field name="quantity"/>
@@ -42,6 +42,7 @@
                 <field name="account_id" widget="datev_account_number"/>
                 <field name="country_code"/>
                 <field name="vat_id" widget="datev_vat"/>
+                <field name="payment_date"/>
             </tree>
         </field>
     </record>
