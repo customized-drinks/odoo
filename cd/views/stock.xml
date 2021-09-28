@@ -38,4 +38,15 @@
             </xpath>
         </field>
     </record>
+
+    <record id="view_stock_tree_inherit" model="ir.ui.view">
+        <field name="name">stock.picking.tree.inherited</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="date_done"/>
+            </field>
+        </field>
+    </record>
 </odoo>

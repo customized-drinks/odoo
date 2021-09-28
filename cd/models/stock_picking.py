@@ -61,3 +61,41 @@ class StockPicking(models.Model):
     def set_processing(self):
         self.move_lines._set_processing()
 
+    #
+    # def _find_mail_template(self, force_confirmation_template=False):
+    #     template_id = False
+    #
+    #     if force_confirmation_template or (self.state == 'sale' and not self.env.context.get('proforma', False)):
+    #         template_id = int(self.env['ir.config_parameter'].sudo().get_param('sale.default_confirmation_template'))
+    #         template_id = self.env['mail.template'].search([('id', '=', template_id)]).id
+    #         if not template_id:
+    #             template_id = self.env['ir.model.data'].xmlid_to_res_id('sale.mail_template_sale_confirmation', raise_if_not_found=False)
+    #     if not template_id:
+    #         template_id = self.env['ir.model.data'].xmlid_to_res_id('sale.email_template_edi_sale', raise_if_not_found=False)
+    #
+    #     return template_id
+    #
+    # def action_tracking_send(self):
+    #     ''' Opens a wizard to compose an email, with relevant mail template loaded by default '''
+    #     self.ensure_one()
+    #     template_id = self._find_mail_template()
+    #     template = self.env['mail.template'].browse(template_id)
+    #     ctx = {
+    #         'default_model': 'sale.order',
+    #         'default_res_id': self.ids[0],
+    #         'default_use_template': bool(template_id),
+    #         'default_template_id': template_id,
+    #         'default_composition_mode': 'comment',
+    #         'custom_layout': "mail.mail_notification_paynow",
+    #         'force_email': True
+    #     }
+    #     return {
+    #         'type': 'ir.actions.act_window',
+    #         'view_mode': 'form',
+    #         'res_model': 'mail.compose.message',
+    #         'views': [(False, 'form')],
+    #         'view_id': False,
+    #         'target': 'new',
+    #         'context': ctx,
+    #     }
+

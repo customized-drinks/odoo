@@ -6,6 +6,13 @@ from odoo import models, fields, api
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
 
+    invoice_status = fields.Selection([
+        ('upselling', 'Upselling Opportunity'),
+        ('invoiced', 'Fully Invoiced'),
+        ('to invoice', 'To Invoice'),
+        ('no', 'Nothing to Invoice')
+    ], string='Invoice Status', compute='_get_invoice_status', store=True, readonly=False)
+
     def _prepare_confirmation_values(self):
         return {
             'state': 'sale',
