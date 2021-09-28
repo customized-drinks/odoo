@@ -31,6 +31,7 @@
                 <field name="move_name"/>
                 <field name="invoice_date"/>
                 <field name="delivery_date"/>
+                <field name="payment_date"/>
                 <field name="quantity"/>
                 <field name="price_subtotal"/>
                 <field name="tax_rate" widget="datev_tax_rate"/>
@@ -42,7 +43,7 @@
                 <field name="account_id" widget="datev_account_number"/>
                 <field name="country_code"/>
                 <field name="vat_id" widget="datev_vat"/>
-                <field name="payment_date"/>
+                <field name="weight" widget="datev_weight"/>
             </tree>
         </field>
     </record>

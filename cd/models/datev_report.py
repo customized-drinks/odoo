@@ -10,10 +10,11 @@ class DatevReport(models.Model):
     _auto = False
 
     id = fields.Many2one('account.move.line', string='Line ID')
-    receivable_code = fields.Char(string='Receivable Code')
+    receivable_code = fields.Char(string='Receivable')
     invoice_date = fields.Date(string='Invoice Date')
-    delivery_date = fields.Date(string='Delivery Date')  # Leistungsdatum
-    move_name = fields.Char(string='Invoice No.')
+    delivery_date = fields.Date(string='Delivery Date')
+    payment_date = fields.Date(string='Payment Date')
+    move_name = fields.Char(string='Invoice')
     quantity = fields.Integer('Quantity')
     price_subtotal = fields.Float('Subtotal')
     tax_rate = fields.Integer('Tax Rate')
@@ -25,7 +26,7 @@ class DatevReport(models.Model):
     account_id = fields.Many2one('account.account', string='Account')
     country_code = fields.Char('Country')
     vat_id = fields.Char('VAT')
-    payment_date = fields.Date(string='Payment Date')
+    weight = fields.Char('Weight')
 
     def init(self):
         tools.drop_view_if_exists(self._cr, 'datev_report')
@@ -36,6 +37,7 @@ class DatevReport(models.Model):
                 SUM(line.id) as id,
                 line.move_id as move_id,
                 line.move_id as debit_credit,
+                line.move_name as weight,
                 line.move_name as move_name,
                 line.account_id as account_id,
                 line.partner_id as partner_id,
@@ -60,7 +62,7 @@ class DatevReport(models.Model):
             LEFT JOIN
                 res_currency as currency ON currency.id = line.currency_id
             LEFT JOIN
-                res_partner as partner ON partner.id = move.partner_id
+                res_partner as partner ON partner.id = move.partner_shipping_id
             LEFT JOIN
                 res_country as country ON country.id = partner.country_id
             LEFT JOIN
@@ -82,25 +84,30 @@ class CustomCSVExport(CSVExport):
         data[2] = format_date(data[2], locale='de_DE')
         if data[3] is not '':
             data[3] = format_date(data[3], locale='de_DE')
-        account = data[12]
+        if data[4] is not '':
+            data[4] = format_date(data[4], locale='de_DE')
+        account = data[13]
         tax_rate = 0
         if '4301' in account or '4311' in account:
             tax_rate = 7
         elif '4402' in account or '4316' in account:
             tax_rate = 19
-        data[6] = tax_rate
-        data[7] = data[8] - data[5]
-        data[5] = format_currency(data[5], 'EUR', locale='de_DE')[:-2]
-        if data[7] != 0:
-            data[7] = format_currency(data[7], 'EUR', locale='de_DE')[:-2]
-        data[8] = format_currency(data[8], 'EUR', locale='de_DE')[:-2]
+        data[7] = tax_rate
+        subtotal = data[6]
+        data[8] = data[9] - subtotal
+        data[6] = format_currency(subtotal, 'EUR', locale='de_DE')[:-2]
+        if data[8] != 0:
+            data[8] = format_currency(data[8], 'EUR', locale='de_DE')[:-2]
+        data[9] = format_currency(data[9], 'EUR', locale='de_DE')[:-2]
         invoice_number = data[1]
         debit_credit = 'H'
         if 'RINV' in invoice_number:
             debit_credit = 'S'
-        data[10] = debit_credit
-        data[12] = data[12][0:4]
-        data[14] = data[14][2:]
+        data[11] = debit_credit
+        data[13] = data[13][0:4]
+        data[15] = data[15][2:]
+        weight = "{:.2f}".format((subtotal / 19) * 1.7)
+        data[16] = format_currency(weight, 'EUR', locale='de_DE')[:-2]
         return data
 
     def from_data(self, fields, rows):
@@ -111,7 +118,7 @@ class CustomCSVExport(CSVExport):
 
         for data in rows:
             row = []
-            if fields[0] == 'Receivable Code':
+            if fields[0] == 'Receivable' or fields[0] == 'Debitor':
                 data = self.format_data(data)
             for d in data:
                 # Spreadsheet apps tend to detect formulas on leading =, + and -

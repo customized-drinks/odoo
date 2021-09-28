@@ -19,3 +19,10 @@ class SaleOrder(models.Model):
     #         template_id = self.env['ir.model.data'].xmlid_to_res_id('sale.mail_template_sale_confirmation', raise_if_not_found=False)
     #
     #     return template_id
+
+    def _prepare_invoice(self):
+        self.ensure_one()
+        invoice_vals = super(SaleOrder, self)._prepare_invoice()
+        if self.effective_date:
+            invoice_vals['delivery_date'] = self.effective_date
+        return invoice_vals

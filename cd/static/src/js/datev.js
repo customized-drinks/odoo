@@ -98,3 +98,20 @@ odoo.define('datev_vat', function (require) {
         vat: vat,
     }
 })
+
+odoo.define('datev_weight', function (require) {
+    'use strict'
+    let AbstractField = require('web.AbstractField')
+    let fieldRegistry = require('web.field_registry')
+    let weight = AbstractField.extend({
+        _renderReadonly: function () {
+            let formattedWeight = (((this.recordData.price_subtotal / 19) * 1.7).toFixed(2)).toLocaleString('de-DE')
+            this.value = formattedWeight
+            this.$el.text(formattedWeight)
+        },
+    })
+    fieldRegistry.add('datev_weight', weight)
+    return {
+        weight: weight,
+    }
+})

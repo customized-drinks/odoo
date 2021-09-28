@@ -16,6 +16,17 @@
         </field>
     </record>
 
+    <record id="view_partner_tree_inherit" model="ir.ui.view">
+        <field name="name">res.partner.tree.inherited</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <field name="display_name" position="after">
+                <field name="title"/>
+            </field>
+        </field>
+    </record>
+
     <record id="view_order_form_inherit" model="ir.ui.view">
         <field name="name">sale.order.form</field>
         <field name="model">sale.order</field>
@@ -45,6 +56,17 @@
             <xpath expr="/search/filter[@name='sales']" position="before">
                 <filter name="sent" string="Prepayment Invoices" domain="[('state', '=', 'sent')]" help="Prepayment invoices"/>
             </xpath>
+        </field>
+    </record>
+
+    <record id="view_order_tree_inherit" model="ir.ui.view">
+        <field name="name">sale.order.inherited</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <field name="date_order" position="after">
+                <field name="effective_date"/>
+            </field>
         </field>
     </record>
 </odoo>
