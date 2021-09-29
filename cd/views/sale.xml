@@ -33,7 +33,7 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="/form/header/button[@name='action_quotation_send'][1]" position="replace">
-<!--                    <button name="action_quotation_send" string="Send by Email" type="object" states="draft" class="btn-primary"/>-->
+                <!--                    <button name="action_quotation_send" string="Send by Email" type="object" states="draft" class="btn-primary"/>-->
             </xpath>
             <xpath expr="/form/header/button[@name='action_quotation_send'][2]" position="replace">
                 <!--<button name="action_quotation_send" type="object" string="Send PRO-FORMA Invoice"
@@ -42,8 +42,12 @@
             </xpath>
             <xpath expr="/form/header/button[@name='action_confirm']" position="before">
                 <button name="action_quotation_sent" type="object" string="Prepayment Invoice"
-                  groups="sale.group_proforma_sales" class="btn-primary"
-                  attrs="{'invisible': [('state', 'not in', ['draft'])]}"/>
+                        groups="sale.group_proforma_sales" class="btn-primary"
+                        attrs="{'invisible': [('state', 'not in', ['draft'])]}"/>
+            </xpath>
+            <xpath expr="/form/header/button[@name='action_cancel']" position="replace">
+                <button name="action_cancel" confirm="Do you really want to cancel the order?" type="object" string="Cancel"
+                        attrs="{'invisible': ['|', ('state', 'not in', ['draft', 'sent','sale']), ('id', '=', False)]}"/>
             </xpath>
             <xpath expr="/form/sheet/notebook/page/group/group/field[@name='invoice_status']" position="replace">
                 <field name="invoice_status" states="draft,sent,sale,done,cancel"/>
@@ -57,7 +61,8 @@
         <field name="inherit_id" ref="sale.sale_order_view_search_inherit_quotation"/>
         <field name="arch" type="xml">
             <xpath expr="/search/filter[@name='sales']" position="before">
-                <filter name="sent" string="Prepayment Invoices" domain="[('state', '=', 'sent')]" help="Prepayment invoices"/>
+                <filter name="sent" string="Prepayment Invoices" domain="[('state', '=', 'sent')]"
+                        help="Prepayment invoices"/>
             </xpath>
         </field>
     </record>

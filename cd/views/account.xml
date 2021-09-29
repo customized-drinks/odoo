@@ -7,6 +7,11 @@
             <field name="invoice_date" position="after">
                 <field name="delivery_date"/>
             </field>
+            <xpath expr="/form/header/button[@name='button_cancel']" position="replace">
+                <button name="button_cancel" string="Cancel" confirm="Do you really want to cancel the invoice?"
+                        type="object" groups="account.group_account_invoice"
+                        attrs="{'invisible' : ['|', ('id', '=', False), ('state', '!=', 'draft')]}"/>
+            </xpath>
         </field>
     </record>
 
@@ -26,7 +31,7 @@
         <field name="model">datev.report</field>
         <field name="arch" type="xml">
             <tree string="DATEV Report" create="false" edit="false" sample="1">
-<!--                <field name="id"/>-->
+                <!--                <field name="id"/>-->
                 <field name="receivable_code"/>
                 <field name="move_name"/>
                 <field name="invoice_date"/>
@@ -49,17 +54,19 @@
     </record>
 
     <record id="action_account_moves_datev" model="ir.actions.act_window">
-<!--        <field name="context">{'journal_type':'general', 'search_default_posted':1}</field>-->
+        <!--        <field name="context">{'journal_type':'general', 'search_default_posted':1}</field>-->
         <field name="context">{}</field>
         <field name="name">DATEV Report</field>
         <field name="type">ir.actions.act_window</field>
         <field name="res_model">datev.report</field>
-<!--        <field name="domain">[('display_type', 'not in', ('line_section', 'line_note')), ('move_id.state', '!=', 'cancel')]</field>-->
+        <!--        <field name="domain">[('display_type', 'not in', ('line_section', 'line_note')), ('move_id.state', '!=', 'cancel')]</field>-->
         <field name="domain">[]</field>
         <field name="view_id" ref="view_datev_report_tree"/>
         <field name="view_mode">tree</field>
     </record>
 
-    <menuitem id="menu_action_account_moves_datev" action="action_account_moves_datev" parent="account.menu_finance_entries_accounting_miscellaneous" groups="account.group_account_readonly" sequence="15"/>
+    <menuitem id="menu_action_account_moves_datev" action="action_account_moves_datev"
+              parent="account.menu_finance_entries_accounting_miscellaneous" groups="account.group_account_readonly"
+              sequence="15"/>
 
 </odoo>

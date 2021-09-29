@@ -19,6 +19,11 @@
             <xpath expr="/form/header/button[@name='do_unreserve']" position="replace">
                 <button name="do_unreserve" string="Unreserve" groups="base.group_user" type="object" attrs="{'invisible': ['|', '|', '|', ('picking_type_code', '=', 'incoming'), ('immediate_transfer', '=', True), '&amp;', ('state', 'not in', ('assigned', 'partially_available', 'processing')), ('move_type', '!=', 'one'), '&amp;', ('state', 'not in', ('assigned', 'partially_available', 'confirmed', 'processing')), ('move_type', '=', 'one')]}"/>
             </xpath>
+            <xpath expr="/form/header/button[@name='action_cancel']" position="replace">
+                <button name="action_cancel" confirm="Do you really want to cancel the shipment?"
+                        attrs="{'invisible': [('state', 'not in', ('assigned', 'confirmed', 'partially_available', 'draft', 'waiting'))]}"
+                        string="Cancel" groups="base.group_user" type="object"/>
+            </xpath>
             <xpath expr="/form/header/field[@name='state']" position="replace">
                 <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,assigned,processing,done" />
             </xpath>
