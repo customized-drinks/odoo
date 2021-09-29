@@ -45,6 +45,9 @@
                   groups="sale.group_proforma_sales" class="btn-primary"
                   attrs="{'invisible': [('state', 'not in', ['draft'])]}"/>
             </xpath>
+            <xpath expr="/form/sheet/notebook/page/group/group/field[@name='invoice_status']" position="replace">
+                <field name="invoice_status" states="draft,sent,sale,done,cancel"/>
+            </xpath>
         </field>
     </record>
 
