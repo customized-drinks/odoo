@@ -241,6 +241,12 @@
                     <p t-if="o.invoice_payment_term_id" name="payment_term" class="mt-4">
                         <span t-field="o.invoice_payment_term_id.note"/>
                     </p>
+                    <t t-if="o.partner_id != o.partner_shipping_id">
+                        <strong>Shipping Address:</strong>
+                        <address t-field="o.partner_shipping_id"
+                                 t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;], &quot;no_marker&quot;: True, &quot;phone_icons&quot;: True}"/>
+
+                    </t>
                     <p t-if="o.narration" name="comment" class="mt-4">
                         <span t-field="o.narration"/>
                     </p>

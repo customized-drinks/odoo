@@ -46,11 +46,21 @@
                         attrs="{'invisible': [('state', 'not in', ['draft'])]}"/>
             </xpath>
             <xpath expr="/form/header/button[@name='action_cancel']" position="replace">
-                <button name="action_cancel" confirm="Do you really want to cancel the order?" type="object" string="Cancel"
+                <button name="action_cancel" confirm="Do you really want to cancel the order?" type="object"
+                        string="Cancel"
                         attrs="{'invisible': ['|', ('state', 'not in', ['draft', 'sent','sale']), ('id', '=', False)]}"/>
             </xpath>
             <xpath expr="/form/sheet/notebook/page/group/group/field[@name='invoice_status']" position="replace">
                 <field name="invoice_status" states="draft,sent,sale,done,cancel"/>
+            </xpath>
+            <xpath expr="/form/sheet/group/group/field[@name='partner_id']" position="replace">
+                <field name="partner_id" widget="res_partner_many2one" context="{'res_partner_search_mode': 'customer'}" options="{&quot;always_reload&quot;: True}"/>
+            </xpath>
+            <xpath expr="/form/sheet/group/group/field[@name='partner_invoice_id']" position="replace">
+                    <field name="partner_invoice_id" widget="res_partner_many2one" groups="sale.group_delivery_invoice_address" context="{'res_partner_search_mode': 'customer', 'show_address': 1, 'show_vat': True}" options="{&quot;always_reload&quot;: True}"/>
+            </xpath>
+            <xpath expr="/form/sheet/group/group/field[@name='partner_shipping_id']" position="replace">
+                    <field name="partner_shipping_id" widget="res_partner_many2one" groups="sale.group_delivery_invoice_address" context="{'res_partner_search_mode': 'customer', 'show_address': 1, 'show_vat': True}" options="{&quot;always_reload&quot;: True}"/>
             </xpath>
         </field>
     </record>
@@ -75,6 +85,19 @@
             <field name="date_order" position="after">
                 <field name="effective_date"/>
             </field>
+        </field>
+    </record>
+
+    <record id="view_purchase_form_inherit" model="ir.ui.view">
+        <field name="name">purchase.order.form</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="/form/header/button[@name='button_cancel']" position="replace">
+                <button name="button_cancel" confirm="Do you really want to cancel the purchase?"
+                        states="draft,to approve,sent,purchase" string="Cancel" type="object"/>
+
+            </xpath>
         </field>
     </record>
 

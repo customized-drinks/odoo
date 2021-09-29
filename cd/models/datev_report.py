@@ -87,6 +87,7 @@ class CustomCSVExport(CSVExport):
         if data[4] is not '':
             data[4] = format_date(data[4], locale='de_DE')
         account = data[13]
+        data[5] = int(data[5])
         tax_rate = 0
         if '4301' in account or '4311' in account:
             tax_rate = 7
@@ -112,7 +113,7 @@ class CustomCSVExport(CSVExport):
 
     def from_data(self, fields, rows):
         fp = io.BytesIO()
-        writer = pycompat.csv_writer(fp, quoting=1)
+        writer = pycompat.csv_writer(fp, delimiter=';', quoting=0)
 
         writer.writerow(fields)
 
