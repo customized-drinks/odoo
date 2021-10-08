@@ -147,7 +147,6 @@
                             </t>
                         </tbody>
                     </table>
-                    <t t-set="intra_community" t-value="False"/>
                     <div class="clearfix">
                         <div id="total" class="row">
                             <div t-attf-class="#{'col-6' if report_type != 'html' else 'col-sm-7 col-md-6'} ml-auto">
@@ -161,9 +160,6 @@
                                         </td>
                                     </tr>
                                     <t t-foreach="o.amount_by_group" t-as="amount_by_group">
-                                        <t t-if='"0%" in amount_by_group[0]'>
-                                            <t t-set="intra_community" t-value="True"/>
-                                        </t>
                                         <tr style="">
                                             <t t-if="len(o.line_ids.filtered(lambda line: line.tax_line_id)) in [0, 1] and o.amount_untaxed == amount_by_group[2]">
                                                 <td>
@@ -228,9 +224,12 @@
                             </div>
                         </div>
                     </div>
-                    <p t-if="intra_community">
+                    <p t-if='"36" in str(o.fiscal_position_id)'>
                         * Tax-free intra-Community delivery.
                     </p>
+                    <t t-if='"35" in str(o.fiscal_position_id)'>
+                        * Tax-free export delivery.
+                    </t>
                     <p t-if="o.move_type in ('out_invoice', 'in_refund')" name="payment_communication" class="mt-4">
                         Please use the following communication for your payment:
                         <b>

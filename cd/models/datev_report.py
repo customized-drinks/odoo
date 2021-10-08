@@ -69,7 +69,7 @@ class DatevReport(models.Model):
                 ir_property as property ON (property.name = 'property_account_receivable_id' AND property.res_id = CONCAT('res.partner,', line.partner_id))
             LEFT JOIN
                 account_account as account ON account.id = ALL(string_to_array(split_part(property.value_reference, ',', 2), ',')::smallint[])
-            WHERE line.account_id IN (2510, 2511, 2512, 2513, 2514, 2515)
+            WHERE line.account_id IN (2510, 2511, 2512, 2513, 2514, 2515) AND line.parent_state = 'posted'
             GROUP BY
                 line.move_id, line.move_name, move.delivery_date, move.date, line.account_id, line.partner_id, currency.name, country.code, partner.vat, account.code, payment.date
             ORDER BY
