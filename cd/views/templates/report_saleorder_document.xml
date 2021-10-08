@@ -152,7 +152,6 @@
                             </t>
                         </tbody>
                     </table>
-                    <t t-set="intra_community" t-value="False"/>
                     <div class="clearfix" name="so_total_summary">
                         <div id="total" class="row" name="total">
                             <div t-attf-class="#{'col-5' if report_type != 'html' else 'col-sm-7 col-md-5'} ml-auto">
@@ -181,9 +180,6 @@
                                                 </td>
                                             </t>
                                             <t t-else="">
-                                                <t t-if='"0%" in amount_by_group[0]'>
-                                                    <t t-set="intra_community" t-value="True"/>
-                                                </t>
                                                 <td name="td_amount_by_group_label">
                                                     <span t-esc="amount_by_group[0]"/>
                                                 </td>
@@ -206,8 +202,11 @@
                             </div>
                         </div>
                     </div>
-                    <p t-if="intra_community">
+                    <p t-if='"36" in str(doc.fiscal_position_id)'>
                         * Tax-free intra-Community delivery.
+                    </p>
+                    <p t-if='"35" in str(doc.fiscal_position_id)'>
+                        * Tax-free export delivery.
                     </p>
                     <p t-if="doc.state in ['sent']" name="payment_communication" class="mt-4">
                         Please use the following communication for your payment:
