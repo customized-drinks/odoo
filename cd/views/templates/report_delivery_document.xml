@@ -176,6 +176,10 @@
                             <strong>Tracking Numbers:</strong>
                             <p t-field="o.carrier_tracking_ref"/>
                         </div>
+                        <div t-if="o.delivery_note">
+                            <strong>Delivery Notes:</strong>
+                            <p t-field="o.delivery_note"/>
+                        </div>
                         <t t-set="backorders"
                            t-value="o.backorder_ids.filtered(lambda x: x.state not in ('done', 'cancel'))"/>
                         <t t-if="o.backorder_ids and backorders">

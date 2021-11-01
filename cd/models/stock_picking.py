@@ -24,6 +24,8 @@ class StockPicking(models.Model):
              " * Done: The transfer has been processed.\n"
              " * Cancelled: The transfer has been cancelled.")
 
+    delivery_note = fields.Text('Delivery Notes')
+
     def _action_done(self):
         """Call `_action_done` on the `stock.move` of the `stock.picking` in `self`.
         This method makes sure every `stock.move.line` is linked to a `stock.move` by either
@@ -56,7 +58,7 @@ class StockPicking(models.Model):
 
     def do_unreserve(self):
         self.move_lines._do_unreserve()
-        # self.package_level_ids.filtered(lambda p: not p.move_ids).unlink()
+        self.package_level_ids.filtered(lambda p: not p.move_ids).unlink()
 
     def set_processing(self):
         self.move_lines._set_processing()
