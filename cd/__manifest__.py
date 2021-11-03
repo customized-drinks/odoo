@@ -30,6 +30,7 @@
         'views/stock.xml',
         'views/templates/contact.xml',
         'views/templates/external_layout_din5008.xml',
+        'views/templates/mail_notification_light_inherit.xml',
         'views/templates/report_delivery_document.xml',
         'views/templates/report_invoice_document.xml',
         'views/templates/report_picking.xml',
