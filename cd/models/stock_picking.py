@@ -25,6 +25,7 @@ class StockPicking(models.Model):
              " * Cancelled: The transfer has been cancelled.")
 
     delivery_note = fields.Text('Delivery Notes')
+    relabel = fields.Char('Re-label')
 
     def _action_done(self):
         """Call `_action_done` on the `stock.move` of the `stock.picking` in `self`.

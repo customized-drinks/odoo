@@ -35,6 +35,9 @@
                     <field name="delivery_note" string="Delivery Note" placeholder="Add an external note that will be printed on the Delivery Note sheet"/>
                 </page>
             </xpath>
+            <xpath expr="/form/sheet/group/group/field[@name='origin']" position="after">
+                <field name="relabel" string="Re-label" placeholder="Number of articles to be re-labeled"/>
+            </xpath>
         </field>
     </record>
 
@@ -56,6 +59,9 @@
         <field name="arch" type="xml">
             <field name="partner_id" position="after">
                 <field name="date_done"/>
+            </field>
+            <field name="origin" position="after">
+                <field name="relabel"/>
             </field>
         </field>
     </record>
