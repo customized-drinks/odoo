@@ -11,3 +11,4 @@ from . import base_document_layout
 from . import l10n_de
 from . import l10n_de_sale
 from . import l10n_de_stock
+from . import mail_mail

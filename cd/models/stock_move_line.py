@@ -6,6 +6,8 @@ from odoo import models, fields, api
 class StockMoveLine(models.Model):
     _inherit = "stock.move.line"
 
+    partner_id = fields.Many2one(string='Partner', related='move_id.partner_id')
+
     def _get_aggregated_product_quantities(self, **kwargs):
         """ Returns a dictionary of products (key = id+name+description+uom) and corresponding values of interest.
 
