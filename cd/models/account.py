@@ -9,24 +9,12 @@ class AccountMove(models.Model):
 
     delivery_date = fields.Date(string='Delivery Date')
 
-    def _find_mail_template(self, force_confirmation_template=False):
-        template_id = False
-
-        if self.state == 'draft':
-            template_id = 26
-        elif self.state == 'sent':
-            template_id = 17
-        elif self.state == 'sale':
-            template_id = 18
-
-        return template_id
-
     def action_invoice_sent(self):
         """ Open a window to compose an email, with the edi invoice template
             message loaded by default
         """
         self.ensure_one()
-        template = self.env.ref('account.email_template_edi_invoice', raise_if_not_found=False)
+        template = self.env.ref('cd.mail_invoice', raise_if_not_found=False)
         lang = False
         if template:
             lang = template._render_lang(self.ids)[self.id]

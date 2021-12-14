@@ -37,6 +37,9 @@
         'views/templates/report_saleorder_document.xml',
         'views/templates/stock_report_delivery_aggregated_move_lines_inherit.xml',
         'views/templates/stock_report_delivery_package_section_line.xml',
+        'views/templates/mail_invoice.xml',
+        'views/templates/mail_invoice_du.xml',
+        'views/templates/mail_prepayment_invoice.xml',
         'security/ir.model.access.csv',
     ]
 }

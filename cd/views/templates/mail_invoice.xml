@@ -1,0 +1,44 @@
+<?xml version="1.0" ?>
+<odoo>
+
+    <!-- Mail template are declared in a NOUPDATE block
+         so users can freely customize/delete them -->
+    <data noupdate="1">
+        <!--Email template -->
+        <record id="mail_invoice" model="mail.template">
+            <field name="name">CD Rechnung - Sie</field>
+            <field name="model_id" ref="account.model_account_move"/>
+            <field name="partner_to">${object.partner_id.id}</field>
+            <field name="subject">Invoice ${object.name}</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Dear
+                        % if object.partner_id.title:
+                            ${object.partner_id.title.name | safe}
+                        % endif
+                        ${object.partner_id.name},
+                        <br /><br />
+
+                        enclosed you will find the invoice ${object.name} for your order ${object.ref}.
+                        <br /><br />
+
+                        If you have any questions, please don't hesitate to ask.
+                        <br /><br />
+
+                        Best regards,
+                        <br /><br />
+
+                        % if user.signature:
+                            ${user.signature | safe}
+                        % endif
+                    </p>
+                </div>
+            </field>
+            <field name="report_template" ref="account.account_invoices"/>
+            <field name="report_name">Invoice_${(object.name or '').replace('/','_')}${object.state == 'draft' and '_draft' or ''}</field>
+            <field name="lang">${object.partner_id.lang}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>

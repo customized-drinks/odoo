@@ -1,0 +1,50 @@
+<?xml version="1.0" ?>
+<odoo>
+
+    <!-- Mail template are declared in a NOUPDATE block
+         so users can freely customize/delete them -->
+    <data noupdate="1">
+        <!--Email template -->
+        <record id="mail_prepayment_invoice" model="mail.template">
+            <field name="name">CD Vorkasse-Rechnung - Du</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
+            <field name="partner_to">${object.partner_id.id}</field>
+            <field name="subject">Prepayment Invoice ${object.name}</field>
+            <field name="body_html" type="html">
+                <div style="margin: 0px; padding: 0px;">
+                    <p style="margin: 0px; padding: 0px; font-size: 13px;">
+                        Dear
+                        % if object.partner_invoice_id.title:
+                            ${object.partner_invoice_id.title.name | safe}
+                        % endif
+                        ${object.partner_invoice_id.name},
+                        <br/>
+                        <br/>
+
+                        thank you for your order ${object.client_order_ref}.
+                        <br/>
+                        <br/>
+
+                        Enclosed you will find the order confirmation ${object.name}.
+                        <br/>
+                        <br/>
+
+                        After the payment of ${format_amount(object.amount_total, object.pricelist_id.currency_id)} we
+                        will send your order as soon as possible.
+                        <br/>
+                        <br/>
+
+                        Best regards,
+                        % if user.signature:
+                            ${user.signature | safe}
+                        % endif
+                    </p>
+                </div>
+            </field>
+            <field name="report_template" ref="sale.report_saleorder_pro_forma"/>
+            <field name="report_name">Prepayment_Invoice_${(object.name or '').replace('/','_')}</field>
+            <field name="lang">${object.partner_id.lang}</field>
+            <field name="auto_delete" eval="True"/>
+        </record>
+    </data>
+</odoo>
