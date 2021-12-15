@@ -17,10 +17,10 @@
                         % if object.partner_id.title:
                             ${object.partner_id.title.name | safe}
                         % endif
-                        ${object.partner_id.name},
+                        ${object.partner_id.name or ''},
                         <br/><br/>
 
-                        enclosed you will find the refund ${object.name} for your invoice ${object.ref}.
+                        enclosed you will find the refund ${object.name} for your invoice ${object.ref or ''}.
                         <br/><br/>
 
                         If you have any questions, please don't hesitate to ask.

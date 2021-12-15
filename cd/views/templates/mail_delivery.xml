@@ -17,10 +17,10 @@
                         % if object.partner_id.title:
                             ${object.partner_id.title.name | safe}
                         % endif
-                        ${object.partner_id.name},
+                        ${object.partner_id.name or ''},
                         <br/><br/>
 
-                        Today we sent your order <strong>${object.sale_id.client_order_ref}</strong>.
+                        Today we sent your order <strong>${object.sale_id.client_order_ref or ''}</strong>.
                         % if object.carrier_tracking_ref:
                             The tracking numbers are:
                             <strong>

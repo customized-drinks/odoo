@@ -17,10 +17,10 @@
                         % if object.partner_id.title:
                             ${object.partner_id.title.name | safe}
                         % endif
-                        ${object.partner_id.name},
+                        ${object.partner_id.name or ''},
                         <br/><br/>
 
-                        thank you for your order ${object.client_order_ref}.
+                        thank you for your order ${object.client_order_ref or ''}.
                         <br/><br/>
 
                         Enclosed you will find the order confirmation ${object.name}.

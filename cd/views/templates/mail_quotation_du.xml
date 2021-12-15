@@ -17,7 +17,7 @@
                         % if object.partner_id.title:
                             ${object.partner_id.title.name | safe}
                         % endif
-                        ${object.partner_id.name},
+                        ${object.partner_id.name or ''},
                         <br/><br/>
 
                         your quotation ${object.name} in the amount of
