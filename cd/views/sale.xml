@@ -111,4 +111,26 @@
             </field>
         </field>
     </record>
+
+    <record id="email_compose_message_wizard_form_inherit" model="ir.ui.view">
+        <field name="name">mail.compose.message.form</field>
+        <field name="model">mail.compose.message</field>
+        <field name="inherit_id" ref="mail.email_compose_message_wizard_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="/form/footer/button[@name='save_as_template']" position="replace">
+
+            </xpath>
+        </field>
+    </record>
+
+    <record id="account_invoice_send_wizard_form_inherit" model="ir.ui.view">
+        <field name="name">account.invoice.send.form</field>
+        <field name="model">account.invoice.send</field>
+        <field name="inherit_id" ref="account.account_invoice_send_wizard_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="/form/footer/button[@name='save_as_template']" position="replace">
+
+            </xpath>
+        </field>
+    </record>
 </odoo>
