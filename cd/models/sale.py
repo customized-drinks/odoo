@@ -23,11 +23,14 @@ class SaleOrder(models.Model):
         template_id = False
 
         if self.state == 'draft':
-            template_id = 26
+            template_id = self.env['ir.model.data'].xmlid_to_res_id('cd.mail_quotation',
+                                                                    raise_if_not_found=False)
         elif self.state == 'sent':
-            template_id = 17
+            template_id = self.env['ir.model.data'].xmlid_to_res_id('cd.mail_prepayment_invoice',
+                                                                    raise_if_not_found=False)
         elif self.state == 'sale':
-            template_id = 18
+            template_id = self.env['ir.model.data'].xmlid_to_res_id('cd.mail_order',
+                                                                    raise_if_not_found=False)
 
         return template_id
 
