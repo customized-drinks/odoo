@@ -35,12 +35,15 @@
                         <br/>
 
                         Best regards,
+                        <br/>
+                        <br/>
                         % if user.signature:
                             ${user.signature | safe}
                         % endif
                     </p>
                 </div>
             </field>
+            <field name="mail_server_id">2</field>
             <field name="report_template" ref="sale.report_saleorder_pro_forma"/>
             <field name="report_name">Prepayment_Invoice_${(object.name or '').replace('/','_')}</field>
             <field name="lang">${object.partner_id.lang}</field>

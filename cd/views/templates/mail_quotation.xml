@@ -5,11 +5,11 @@
          so users can freely customize/delete them -->
     <data noupdate="1">
         <!--Email template -->
-        <record id="mail_invoice_du" model="mail.template">
-            <field name="name">CD Rechnung - Du</field>
-            <field name="model_id" ref="account.model_account_move"/>
+        <record id="mail_quotation" model="mail.template">
+            <field name="name">CD Angebot - Sie</field>
+            <field name="model_id" ref="sale.model_sale_order"/>
             <field name="partner_to">${object.partner_id.id}</field>
-            <field name="subject">Invoice ${object.name}</field>
+            <field name="subject">Quotation ${object.name}</field>
             <field name="body_html" type="html">
                 <div style="margin: 0px; padding: 0px;">
                     <p style="margin: 0px; padding: 0px; font-size: 13px;">
@@ -20,10 +20,8 @@
                         ${object.partner_id.name},
                         <br/><br/>
 
-                        enclosed you will find the invoice ${object.name} for your order ${object.ref}.
-                        <br/><br/>
-
-                        If you have any questions, please don't hesitate to ask.
+                        your quotation ${object.name} in the amount of
+                        ${format_amount(object.amount_total, object.pricelist_id.currency_id)} is available for review.
                         <br/><br/>
 
                         Best regards,
@@ -36,8 +34,8 @@
                 </div>
             </field>
             <field name="mail_server_id">2</field>
-            <field name="report_template" ref="account.account_invoices"/>
-            <field name="report_name">Invoice_${(object.name or '').replace('/','_')}${object.state == 'draft' and '_draft' or ''}</field>
+            <field name="report_template" ref="sale.report_saleorder"/>
+            <field name="report_name">Quotation_${(object.name or '').replace('/','_')}</field>
             <field name="lang">${object.partner_id.lang}</field>
             <field name="auto_delete" eval="True"/>
         </record>

@@ -40,6 +40,11 @@
         'views/templates/mail_invoice.xml',
         'views/templates/mail_invoice_du.xml',
         'views/templates/mail_prepayment_invoice.xml',
+        'views/templates/mail_prepayment_invoice_du.xml',
+        'views/templates/mail_quotation.xml',
+        'views/templates/mail_quotation_du.xml',
+        'views/templates/mail_delivery.xml',
+        'views/templates/mail_delivery_du.xml',
         'security/ir.model.access.csv',
     ]
 }

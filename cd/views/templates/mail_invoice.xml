@@ -18,16 +18,16 @@
                             ${object.partner_id.title.name | safe}
                         % endif
                         ${object.partner_id.name},
-                        <br /><br />
+                        <br/><br/>
 
                         enclosed you will find the invoice ${object.name} for your order ${object.ref}.
-                        <br /><br />
+                        <br/><br/>
 
                         If you have any questions, please don't hesitate to ask.
-                        <br /><br />
+                        <br/><br/>
 
                         Best regards,
-                        <br /><br />
+                        <br/><br/>
 
                         % if user.signature:
                             ${user.signature | safe}
@@ -35,6 +35,7 @@
                     </p>
                 </div>
             </field>
+            <field name="mail_server_id">2</field>
             <field name="report_template" ref="account.account_invoices"/>
             <field name="report_name">Invoice_${(object.name or '').replace('/','_')}${object.state == 'draft' and '_draft' or ''}</field>
             <field name="lang">${object.partner_id.lang}</field>
