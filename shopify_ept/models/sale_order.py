@@ -820,9 +820,9 @@ class SaleOrder(models.Model):
             rate = rate * 100
             if rate != 0.0 and price != 0.0:
                 if tax_included:
-                    name = "%s_(%s %s included)_%s" % (title, str(rate), "%", company.name)
+                    name = "%s (%s%s)" % (title, str(int(rate)), "%")
                 else:
-                    name = "%s_(%s %s excluded)_%s" % (title, str(rate), "%", company.name)
+                    name = "%s (%s%s)" % (title, str(int(rate)), "%")
                 tax_id = self.env["account.tax"].search([("price_include", "=", tax_included),
                                                          ("type_tax_use", "=", "sale"), ("amount", "=", rate),
                                                          ("name", "=", name), ("company_id", "=", company.id)], limit=1)
