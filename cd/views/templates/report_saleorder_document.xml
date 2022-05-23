@@ -43,7 +43,8 @@
                             <strong>Your Reference:</strong>
                             <p class="m-0" t-field="doc.client_order_ref"/>
                         </div>
-                        <div t-if="doc.date_order and doc.state not in ['draft','sent']" class="col-auto col-3 mw-100 mb-2">
+                        <div t-if="doc.date_order and doc.state not in ['draft','sent']"
+                             class="col-auto col-3 mw-100 mb-2">
                             <strong>Order Date:</strong>
                             <p class="m-0" t-field="doc.date_order"/>
                         </div>
@@ -51,7 +52,8 @@
                             <strong>Quotation Date:</strong>
                             <p class="m-0" t-field="doc.date_order" t-options="{&quot;widget&quot;: &quot;date&quot;}"/>
                         </div>
-                        <div t-if="doc.validity_date and doc.state in ['draft', 'sent']" class="col-auto col-3 mw-100 mb-2"
+                        <div t-if="doc.validity_date and doc.state in ['draft', 'sent']"
+                             class="col-auto col-3 mw-100 mb-2"
                              name="expiration_date">
                             <strong>Expiration:</strong>
                             <p class="m-0" t-field="doc.validity_date"/>
@@ -120,10 +122,12 @@
                                             <span t-esc="', '.join(map(lambda x: (x.description or x.name), line.tax_id))"/>
                                         </td>
                                         <td name="td_subtotal" class="text-right o_price_total">
-                                            <span t-field="line.price_subtotal"
+                                            <span t-field="line.price_subtotal" t-if="'#' not in doc.name"/>
+                                            <span t-field="line.price_total" t-else="'#' in doc.name"/>
+                                            <!--<span t-field="line.price_subtotal"
                                                   groups="account.group_show_line_subtotals_tax_excluded"/>
                                             <span t-field="line.price_total"
-                                                  groups="account.group_show_line_subtotals_tax_included"/>
+                                                  groups="account.group_show_line_subtotals_tax_included"/>-->
                                         </td>
                                     </t>
                                     <t t-if="line.display_type == 'line_section'">

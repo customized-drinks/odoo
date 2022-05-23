@@ -1,0 +1,5 @@
+cd-stage: https://cd-stage.myshopify.com
+api_key: 3abfde0c3f46b48f95eaef991ffdc947
+access_token: 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
+secret_key: 96759bc6a8221b5d5fad0ce90f329752
+

@@ -93,19 +93,53 @@
                             <tr>
                                 <td>
                                     <ul class="list-inline mt-2">
-                                        <li t-if="company.website"><strong>braufaesschen.com</strong></li>
-                                        <li t-if="company.phone">
+                                        <li t-if="company.website">
+                                            <strong>braufaesschen.com</strong>
+                                        </li>
+                                        <t t-if="'name' in o">
+                                            <t t-set="order_number" t-value="o.name"/>
+                                        </t>
+                                        <t t-if="'origin' in o">
+                                            <t t-set="order_number" t-value="o.origin"/>
+                                        </t>
+                                        <t t-if="'invoice_origin' in o">
+                                            <t t-set="order_number" t-value="o.invoice_origin"/>
+                                        </t>
+                                        <t t-if="'shopify_order_number' in o">
+                                            <t t-set="order_number" t-value="'#' + o.shopify_order_number"/>
+                                        </t>
+                                        <t t-if="order_number">
+                                            <li t-if="'#' in order_number">
+                                                +49 (0) 89 904 206 - 810
+                                            </li>
+                                            <li t-else="'#' not in order_number and company.phone">
+                                                <span t-field="company.phone"/>
+                                            </li>
+                                            <li t-if="'#' in order_number">
+                                                info@braufaesschen.com
+                                            </li>
+                                            <li t-else="company.email and '#' not in order_number">
+                                                <span t-field="company.email"/>
+                                            </li>
+                                        </t>
+
+                                        <!--<li t-if="company.phone and '#' not in o.invoice_origin">
                                             <span t-field="company.phone"/>
                                         </li>
-                                        <li t-if="company.email">
-                                            <span t-field="company.email"/>
+                                        <li t-if="o.invoice_origin and '#' in o.invoice_origin">
+                                            info@braufaesschen.com
                                         </li>
-                                        <li>CEOs: Susanne Kistler,<br/>Dominik Guber</li>
+                                        <li t-if="company.email and '#' not in o.invoice_origin">
+                                            <span t-field="company.email"/>
+                                        </li>-->
+                                        <li>CEOs: Susanne Kistler,<br/>Dominik Guber
+                                        </li>
                                     </ul>
                                 </td>
                                 <td>
                                     <ul class="list-inline">
-                                        <li>Volksbank Raiffeisenbank<br/>Nordoberpfalz eG</li>
+                                        <li>Volksbank Raiffeisenbank<br/>Nordoberpfalz eG
+                                        </li>
                                         <!--<li>Konto-Nr: 185 93 840</li>
                                         <li>BLZ: 700 211 80</li>-->
                                         <li>IBAN: DE75753900000000522007</li>

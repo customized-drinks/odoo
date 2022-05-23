@@ -43,6 +43,7 @@
                             <strong>Source:</strong>
                             <p class="m-0" t-field="o.invoice_origin"/>
                         </div>
+
                         <div class="col-auto col-3 mw-100 mb-2" t-if="o.partner_id.ref" name="customer_code">
                             <strong>Customer Code:</strong>
                             <p class="m-0" t-field="o.partner_id.ref"/>
@@ -115,10 +116,12 @@
                                                   id="line_tax_ids"/>
                                         </td>
                                         <td class="text-right o_price_total">
-                                            <span class="text-nowrap" t-field="line.price_subtotal"
+                                            <span class="text-nowrap" t-field="line.price_subtotal" t-if="'#' not in o.invoice_origin"/>
+                                            <span class="text-nowrap" t-field="line.price_total" t-else="'#' in o.invoice_origin"/>
+                                            <!--<span class="text-nowrap" t-field="line.price_subtotal"
                                                   groups="account.group_show_line_subtotals_tax_excluded"/>
                                             <span class="text-nowrap" t-field="line.price_total"
-                                                  groups="account.group_show_line_subtotals_tax_included"/>
+                                                  groups="account.group_show_line_subtotals_tax_included"/>-->
                                         </td>
                                     </t>
                                     <t t-if="line.display_type == 'line_section'">
@@ -208,6 +211,19 @@
                                                     </td>
                                                 </tr>
                                             </t>
+                                            <t t-foreach="request.env['sale.order'].search([('name', '=', o.invoice_origin),('state','=','sale')])"
+                                               t-as="sale_order" t-if="'#' in o.invoice_origin">
+                                                <tr>
+                                                    <td>
+                                                        <i class="oe_form_field text-right oe_payment_label">
+                                                            Payment method
+                                                        </i>
+                                                    </td>
+                                                    <td class="text-right">
+                                                        <span t-esc="sale_order.shopify_payment_gateway_id.name"/>
+                                                    </td>
+                                                </tr>
+                                            </t>
                                             <t t-if="len(payments_vals) &gt; 0">
                                                 <tr class="border-black">
                                                     <td>
@@ -230,7 +246,7 @@
                     <p t-if='"35" in str(o.fiscal_position_id)'>
                         * Tax-free export delivery.
                     </p>
-                    <p t-if="o.move_type in ('out_invoice', 'in_refund')" name="payment_communication" class="mt-4">
+                    <p t-if="o.move_type in ('out_invoice', 'in_refund') and '#' not in o.invoice_origin" name="payment_communication" class="mt-4">
                         Please use the following communication for your payment:
                         <b>
                             <span t-if="o.payment_reference" t-field="o.payment_reference"/>
