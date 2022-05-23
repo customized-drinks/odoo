@@ -726,6 +726,15 @@ class SaleOrder(models.Model):
         """
         sale_order_line_obj = self.env["sale.order.line"]
         instance = self.shopify_instance_id
+
+        props = ''
+        if 'properties' in line:
+            if len(line['properties']) > 0:
+                for prop in line['properties']:
+                    props = props + prop['name'] + ': ' + prop['value']
+            if props is not '':
+                product_name = product_name + ' / ' + props
+
         line_vals = self.prepare_vals_for_sale_order_line(product, product_name, price, quantity)
         order_line_vals = sale_order_line_obj.create_sale_order_line_ept(line_vals)
         order_line_vals = self.shopify_set_tax_in_sale_order_line(instance, line, order_response, is_shipping,
