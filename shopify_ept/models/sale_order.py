@@ -727,13 +727,19 @@ class SaleOrder(models.Model):
         sale_order_line_obj = self.env["sale.order.line"]
         instance = self.shopify_instance_id
 
-        props = ''
+        prod = ''
+        note = ''
         if 'properties' in line:
             if len(line['properties']) > 0:
                 for prop in line['properties']:
-                    props = props + prop['name'] + ': ' + prop['value']
-            if props is not '':
-                product_name = product_name + ' / ' + props
+                    if prop['name'] == 'Product':
+                        prod = '(' + prop['value'] + '): '
+                    elif prop['name'] == 'Note':
+                        note = prop['value']
+        if prod is not '':
+            product_name = product_name + ' ' + prod + note
+        product_name = '[' + product.code + '] ' + product_name
+        # product_name = '[' + line['sku'] + '] ' + product_name
 
         line_vals = self.prepare_vals_for_sale_order_line(product, product_name, price, quantity)
         order_line_vals = sale_order_line_obj.create_sale_order_line_ept(line_vals)
