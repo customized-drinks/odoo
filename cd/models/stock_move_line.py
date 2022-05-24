@@ -19,10 +19,13 @@ class StockMoveLine(models.Model):
         """
         aggregated_move_lines = {}
         for move_line in self:
-            name = move_line.product_id.display_name
-            description = move_line.move_id.description_picking
-            if description == name or description == move_line.product_id.name:
-                description = False
+            name = move_line.product_description
+            description = False
+            if name in ['', None, False]:
+                name = move_line.product_id.display_name
+                description = move_line.move_id.description_picking
+                if description == name or description == move_line.product_id.name:
+                    description = False
             uom = move_line.product_uom_id
             lot = move_line.lot_id
             if lot.name:
