@@ -738,7 +738,14 @@ class SaleOrder(models.Model):
                         note = prop['value']
         if prod is not '':
             product_name = product_name + ' ' + prod + note
-        product_name = '[' + product.code + '] ' + product_name
+        sku = ''
+        if 'code' in product:
+            if product.code is not False:
+                sku = product.code
+        elif 'sku' in line:
+            sku = line['sku']
+
+        product_name = '[' + sku + '] ' + product_name
         # product_name = '[' + line['sku'] + '] ' + product_name
 
         line_vals = self.prepare_vals_for_sale_order_line(product, product_name, price, quantity)
