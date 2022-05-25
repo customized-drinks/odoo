@@ -107,8 +107,7 @@ class StockPicking(models.Model):
     #         'context': ctx,
     #     }
 
-
-    def generate_awb_pdf(self):
+    def download_shipping_labels(self):
         # get all attachments for available pickings if exists.
         attachment_ids = self.env['ir.attachment'].search(
             [('res_model', '=', 'stock.picking'), ('res_id', 'in', self.ids), ('mimetype', '=', 'application/pdf')])
@@ -118,6 +117,8 @@ class StockPicking(models.Model):
                 temp_path = tempfile.gettempdir()
                 # get individual pdf and add its pages to pdfWriter
                 for rec in attachment_ids:
+                    if 'LabelDHL' not in rec.name:
+                        continue
                     file_reader = PyPDF2.PdfFileReader(io.BytesIO(base64.b64decode(rec.datas)))
                     for pageNum in range(file_reader.numPages):
                         pageObj = file_reader.getPage(pageNum)
@@ -137,7 +138,7 @@ class StockPicking(models.Model):
                     datas = base64.b64encode(data.read())
                     attachment_obj = self.env['ir.attachment']
                     final_attachment_id = attachment_obj.sudo().create(
-                        {'name': "name", 'store_fname': 'awb.pdf', 'datas': datas})
+                        {'name': "Shipping_Labels", 'store_fname': outfile_name, 'datas': datas})
 
                 # Delete the temp file to release space
                 if os.path.exists(outfile_path):
@@ -154,5 +155,5 @@ class StockPicking(models.Model):
             except Exception as e:
                 raise UserError(_(e))
         else:
-            raise UserError(_("No PDF attachments available for selected records."))
+            raise UserError(_("No shipping labels available for selected records."))
 
