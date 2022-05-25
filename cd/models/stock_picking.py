@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from odoo import models, fields, api
-
+from odoo import models, _, fields, api
+from odoo.exceptions import UserError
+import PyPDF2
+import tempfile
+import os
+import base64
+import io
 
 class StockPicking(models.Model):
     _inherit = 'stock.picking'
@@ -101,4 +106,53 @@ class StockPicking(models.Model):
     #         'target': 'new',
     #         'context': ctx,
     #     }
+
+
+    def generate_awb_pdf(self):
+        # get all attachments for available pickings if exists.
+        attachment_ids = self.env['ir.attachment'].search(
+            [('res_model', '=', 'stock.picking'), ('res_id', 'in', self.ids), ('mimetype', '=', 'application/pdf')])
+        if attachment_ids:
+            try:
+                pdfWriter = PyPDF2.PdfFileWriter()
+                temp_path = tempfile.gettempdir()
+                # get individual pdf and add its pages to pdfWriter
+                for rec in attachment_ids:
+                    file_reader = PyPDF2.PdfFileReader(io.BytesIO(base64.b64decode(rec.datas)))
+                    for pageNum in range(file_reader.numPages):
+                        pageObj = file_reader.getPage(pageNum)
+                        pdfWriter.addPage(pageObj)
+
+                outfile_name = "Shipping_Labels.pdf"
+                outfile_path = os.path.join(temp_path, outfile_name)
+                # create a temp file and write data to create new combined pdf
+                pdfOutputFile = open(outfile_path, 'wb')
+                pdfWriter.write(pdfOutputFile)
+                pdfOutputFile.close()
+
+
+                final_attachment_id = False
+                # Read the new combined pdf and store it in attachment to get download url
+                with open(outfile_path, 'rb') as data:
+                    datas = base64.b64encode(data.read())
+                    attachment_obj = self.env['ir.attachment']
+                    final_attachment_id = attachment_obj.sudo().create(
+                        {'name': "name", 'store_fname': 'awb.pdf', 'datas': datas})
+
+                # Delete the temp file to release space
+                if os.path.exists(outfile_path):
+                    os.remove(outfile_path)
+                download_url = '/web/content/' + str(final_attachment_id.id) + '?download=true'
+                base_url = 'http://localhost:8069'
+                # base_url = self.env['ir.config_parameter'].get_param('web.base.url')
+                return {
+                    'name': 'Report',
+                    'type': 'ir.actions.act_url',
+                    'url': str(base_url) + str(download_url),
+                    'target': 'new',
+                }
+            except Exception as e:
+                raise UserError(_(e))
+        else:
+            raise UserError(_("No PDF attachments available for selected records."))
 
