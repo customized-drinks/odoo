@@ -78,7 +78,7 @@
                                     <field name="sequence"/>
                                 </group>
                                 <group>
-                                    <field name="product_id" readonly="1"/>
+                                    <field name="product_id"/>
                                     <field name="exported_in_shopify" readonly="1"/>
                                     <field name="default_code"/>
                                     <field name="inventory_item_id" readonly="1"/>

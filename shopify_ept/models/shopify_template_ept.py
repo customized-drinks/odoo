@@ -498,14 +498,16 @@ class ShopifyProductTemplateEpt(models.Model):
         #         break
         for variant in variant_data:
             variant_id = variant.get("id")
-            sku = variant.get("sku").replace("-2-W", "")
+            sku = variant.get("sku")
+            # sku = variant.get("sku").replace("-2-W", "")
             barcode = variant.get("barcode")
             shopify_product, odoo_product = self.shopify_search_odoo_product_variant(instance, variant_id, sku, barcode)
             if odoo_product:
                 odoo_template = odoo_product.product_tmpl_id
         for variant in variant_data:
             variant_id = variant.get("id")
-            sku = variant.get("sku").replace("-2-W", "")
+            sku = variant.get("sku")
+            # sku = variant.get("sku").replace("-2-W", "")
             barcode = variant.get("barcode")
 
             message = self.check_sku_barcode(sku, barcode, name, variant_id, instance.shopify_sync_product_with)
