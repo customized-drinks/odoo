@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="sale_order_view_form_inherit" model="ir.ui.view">
+            <field name="name">sale.order.view.form</field>
+            <field name="model">sale.order</field>
+            <field name="inherit_id" ref="sale.view_order_form"/>
+            <field name="arch" type ="xml">
+                <xpath expr="//field[@name='date_order']" position="after">
+                    <field name="allow_quant_reserved" string="Allow Stock Reservation" help="Reserve products in delivery order before validation"/>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>

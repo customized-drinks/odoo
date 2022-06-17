@@ -1,0 +1,163 @@
+[(ShipmentOrderType){
+   sequenceNumber = 0
+   Shipment =
+      (Shipment){
+         ShipmentDetails =
+            (ShipmentDetailsTypeType){
+               product = "V53WPAK"
+               accountNumber = "22222222225301"
+               customerReference = "Test"
+               shipmentDate = "2022-05-31"
+               costCentre = "WEB/OUT/00055"
+               returnShipmentAccountNumber = None
+               returnShipmentReference = None
+               ShipmentItem =
+                  (ShipmentItemType){
+                     weightInKG = 1.6
+                     lengthInCM = 0
+                     widthInCM = 0
+                     heightInCM = 0
+                  }
+               Service =
+                  (ShipmentService){
+                     IndividualSenderRequirement = None
+                     PackagingReturn = None
+                     Endorsement =
+                        (ServiceconfigurationEndorsement){
+                           _active = 1
+                           _type = "IMMEDIATE"
+                        }
+                     VisualCheckOfAge = None
+                     PreferredLocation = None
+                     PreferredNeighbour = None
+                     PreferredDay = None
+                     NoNeighbourDelivery = None
+                     NamedPersonOnly = None
+                     ReturnReceipt = None
+                     Premium = None
+                     CashOnDelivery = None
+                     AdditionalInsurance = None
+                     BulkyGoods = None
+                     IdentCheck = None
+                     ParcelOutletRouting = None
+                  }
+               Notification =
+                  (ShipmentNotificationType){
+                     recipientEmailAddress = "ds@jaderson.com"
+                     templateId = None
+                  }
+               BankData =
+                  (BankType){
+                     accountOwner = None
+                     bankName = None
+                     iban = None
+                     note1 = None
+                     note2 = None
+                     bic = None
+                     accountreference = None
+                  }
+            }
+         Shipper =
+            (ShipperType){
+               Name =
+                  (NameType){
+                     name1 = "Customized Drinks GmbH"
+                     name2 = None
+                     name3 = None
+                  }
+               Address =
+                  (NativeAddressTypeNew){
+                     streetName = "Landsberger Straße"
+                     streetNumber = "318d"
+                     zip = "80687"
+                     city = "München"
+                     Origin =
+                        (CountryType){
+                           country = None
+                           countryISOCode = "DE"
+                           state = None
+                        }
+                  }
+               Communication =
+                  (CommunicationType){
+                     phone = "+49 (0) 89 904 206 -"
+                     email = "sales@braufaesschen.com"
+                     contactPerson = "Customized Drinks GmbH"
+                  }
+            }
+         Receiver =
+            (ReceiverTypeType){
+               name1 = "Jaderson Rafael Webler, Jaderson Rafael Webler"
+               Address =
+                  (ReceiverNativeAddressType){
+                     name2 = "Jaderson Rafael Webler"
+                     name3 = None
+                     streetName = "Carrer del Pintor Fortuny"
+                     streetNumber = "17"
+                     addressAddition[] = <empty>
+                     dispatchingInformation = None
+                     zip = "08001"
+                     city = "Barcelona"
+                     province = None
+                     Origin =
+                        (CountryType){
+                           country = None
+                           countryISOCode = "ES"
+                           state = None
+                        }
+                  }
+               Communication =
+                  (CommunicationType){
+                     phone = None
+                     email = "ds@jaderson.com"
+                     contactPerson = "Jaderson Rafael Webler, Jaderson Rafael Webler"
+                  }
+            }
+         ReturnReceiver =
+            (ShipperType){
+               Name =
+                  (NameType){
+                     name1 = "Customized Drinks GmbH"
+                     name2 = None
+                     name3 = None
+                  }
+               Address =
+                  (NativeAddressTypeNew){
+                     streetName = "Landsberger Straße"
+                     streetNumber = "318d"
+                     zip = "80687"
+                     city = "München"
+                     Origin =
+                        (CountryType){
+                           country = None
+                           countryISOCode = "DE"
+                           state = None
+                        }
+                  }
+               Communication =
+                  (CommunicationType){
+                     phone = "+49 (0) 89 904 206 -"
+                     email = "sales@braufaesschen.com"
+                     contactPerson = "Customized Drinks GmbH"
+                  }
+            }
+         ExportDocument =
+            (ExportDocumentType){
+               invoiceNumber = None
+               exportType = <empty>
+               exportTypeDescription = None
+               termsOfTrade = None
+               placeOfCommital = None
+               additionalFee = None
+               customsCurrency = None
+               permitNumber = None
+               attestationNumber = None
+               addresseesCustomsReference = None
+               sendersCustomsReference = None
+               WithElectronicExportNtfctn = None
+               ExportDocPosition[] = <empty>
+            }
+         feederSystem = None
+      }
+   PrintOnlyIfCodeable = None
+ }]

@@ -607,6 +607,7 @@ class SaleOrder(models.Model):
             "state": "draft",
             "pricelist_id": pricelist_id.id if pricelist_id else False,
             "team_id": instance.shopify_section_id.id if instance.shopify_section_id else False,
+            "allow_quant_reserved": True
         }
         ordervals = self.create_sales_order_vals_ept(ordervals)
         order_response_vals = self.prepare_order_vals_from_order_response(order_response, instance, workflow,
@@ -654,7 +655,8 @@ class SaleOrder(models.Model):
             "shopify_order_status": order_response.get("fulfillment_status") or "unfulfilled",
             "picking_policy": workflow.picking_policy or False,
             "auto_workflow_process_id": workflow and workflow.id,
-            "client_order_ref": order_response.get("name")
+            "client_order_ref": order_response.get("name"),
+            "allow_quant_reserved": True
         }
         return order_vals
 
