@@ -157,3 +157,18 @@ class StockPicking(models.Model):
         else:
             raise UserError(_("No shipping labels available for selected records."))
 
+    def update_shopify_order(self):
+        # get all attachments for available pickings if exists.
+        picking_ids = self.ids
+
+        if picking_ids:
+            try:
+                for picking_id in picking_ids:
+                    pick = self.env['stock.picking'].search([('id', '=', picking_id)])
+                    pick.manually_update_shipment()
+
+            except Exception as e:
+                raise UserError(_(e))
+        else:
+            raise UserError(_("No shopify orders available for selected records."))
+
