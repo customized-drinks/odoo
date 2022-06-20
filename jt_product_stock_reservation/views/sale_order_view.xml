@@ -7,7 +7,7 @@
             <field name="inherit_id" ref="sale.view_order_form"/>
             <field name="arch" type ="xml">
                 <xpath expr="//field[@name='date_order']" position="after">
-                    <field name="allow_quant_reserved" string="Allow Stock Reservation" help="Reserve products in delivery order before validation"/>
+                    <field name="allow_quant_reserved" string="Reserve Stock" help="Reserve products in delivery order automatically"/>
                 </xpath>
             </field>
         </record>
