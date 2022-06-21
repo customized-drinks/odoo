@@ -157,6 +157,10 @@ class ShopifyResPartnerEpt(models.Model):
         country_code = vals.get("country_code")
         country = partner_obj.get_country(country_code)
 
+        lang = 'en_US'
+        if 'DE' or 'de' in country_code:
+            lang = 'de_DE'
+
         state = partner_obj.create_or_update_state_ept(country_code, state_code, zipcode, country)
 
         partner_vals = {
@@ -169,7 +173,8 @@ class ShopifyResPartnerEpt(models.Model):
             "zip": zipcode.strip() if zipcode else False,
             "state_id": state and state.id or False,
             "country_id": country and country.id or False,
-            "is_company": False
+            "is_company": False,
+            "lang": lang
         }
         update_partner_vals = partner_obj.remove_special_chars_from_partner_vals(partner_vals)
         return update_partner_vals
