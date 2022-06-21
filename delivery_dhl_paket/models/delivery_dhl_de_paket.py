@@ -286,10 +286,12 @@ class ProviderDhlDe(models.Model):
                 if label_urls:
                     logmessage += _("<b>Label Url(s): </b>  %s" % ', '.join(label_urls))
                     picking.message_post(body=logmessage)
-                    picking.sudo().sale_id.message_post(body=logmessage)
+                    if picking.sale_id:
+                        picking.sudo().sale_id.message_post(body=logmessage)
                 if label_pdfs:
                     picking.message_post(body=logmessage, attachments=label_pdfs)
-                    picking.sudo().sale_id.message_post(body=logmessage, attachments=label_pdfs)
+                    if picking.sale_id:
+                        picking.sudo().sale_id.message_post(body=logmessage, attachments=label_pdfs)
                 if ret_label_dict:
                     logmessage = _("<b>Return Label Generated. Return Tracking Number(s): </b>  %s" % ', '.join(list(ret_label_dict.keys())))
                     picking.message_post(body=logmessage, attachments=list(ret_label_dict.values()))

@@ -19,7 +19,7 @@
 	                    <field name="dhl_de_paket_intraship_user" help="Used in Poduction Environment" attrs="{'invisible':[('prod_environment', '!=', True)]}"/>
 	                    <field name="dhl_de_paket_intraship_signature" password="True" help="Used in Poduction Environment" attrs="{'invisible':[('prod_environment', '!=', True)]}"/>
 	                    <field name="dhl_de_paket_account_number" attrs="{'required': [('delivery_type', '=', 'dhl_de_paket')]}"/>
-	                    <field name="dhl_de_paket_partner_no" attrs="{'required': [('delivery_type', '=', 'dhl_de_paket')]}"/>
+	                    <field name="dhl_de_paket_partner_no" attrs="{'required': [('delivery_type', '=', 'dhl_de_paket')]}"/>    
 			<!--
 	                    <field name="dhl_de_paket_region_code" attrs="{'required': [('delivery_type', '=', 'dhl_de_paket')]}"/>
 	                    -->

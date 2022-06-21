@@ -8,7 +8,7 @@
 #
 ##############################################################################
 
-# Updated to business customer shipping api 3.2
+# Updated to business customer shipping api 3.3.0
 
 from urllib.error import URLError
 import unicodedata
@@ -70,7 +70,7 @@ class DHLPaketProvider():
         # "/geschaeftskundenversand-api-3.1.wsdl'
 
         self.wsdl_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                      '../api/geschaeftskundenversand-api-3.2.0.wsdl')
+                                      '../api/geschaeftskundenversand-api-3.3.0.wsdl')
         self.client = False
 
     def login(self, limit=5):

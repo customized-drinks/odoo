@@ -38,7 +38,7 @@ For any support contact o4odoo@gmail.com or omalbastin@gmail.com
     'license': 'OPL-1',
     'website': "https://o4odoo.com",
     'category': 'Technical Settings',
-    'version': '14.0.2.4.1',
+    'version': '14.0.2.4.2',
     'depends': ['delivery', 'mail'],
     'data': [
         'views/delivery_dhl_view.xml',
