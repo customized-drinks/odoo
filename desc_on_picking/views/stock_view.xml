@@ -13,6 +13,12 @@
                     <field name="product_description" />
                 
                 </xpath>
+                <xpath
+                    expr="
+                    //field[@name='move_ids_without_package']//tree//field[@name='description_picking']"
+                    position="replace">
+
+                </xpath>
             </field>
         </record>
 
