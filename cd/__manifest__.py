@@ -45,6 +45,7 @@
         'views/templates/mail_order_du.xml',
         'views/templates/mail_invoice.xml',
         'views/templates/mail_invoice_du.xml',
+        'views/templates/mail_invoice_shopify.xml',
         'views/templates/mail_delivery.xml',
         'views/templates/mail_delivery_du.xml',
         'views/templates/mail_refund.xml',
