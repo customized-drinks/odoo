@@ -2,6 +2,9 @@
 
 from odoo import models, _, fields, api
 from odoo.exceptions import UserError
+from odoo.http import request
+from odoo import http
+
 import PyPDF2
 import tempfile
 import os
@@ -143,13 +146,14 @@ class StockPicking(models.Model):
                 # Delete the temp file to release space
                 if os.path.exists(outfile_path):
                     os.remove(outfile_path)
-                download_url = '/web/content/' + str(final_attachment_id.id) + '?download=true'
-                base_url = 'http://localhost:8069'
+                download_url = 'web/content/' + str(final_attachment_id.id) + '?download=true'
+                host_url = request.httprequest.host_url
+                # base_url = 'http://localhost:8069/'
                 # base_url = self.env['ir.config_parameter'].get_param('web.base.url')
                 return {
                     'name': 'Report',
                     'type': 'ir.actions.act_url',
-                    'url': str(base_url) + str(download_url),
+                    'url': str(host_url) + str(download_url),
                     'target': 'new',
                 }
             except Exception as e:

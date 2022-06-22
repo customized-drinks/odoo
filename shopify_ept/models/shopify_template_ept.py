@@ -499,11 +499,11 @@ class ShopifyProductTemplateEpt(models.Model):
         for variant in variant_data:
             variant_id = variant.get("id")
             # sku = variant.get("sku")
-            sku = variant.get("sku")\
-                .replace("BMK-40-9-W", "BMK-40")\
-                .replace("BMK-95-2-W", "BMK-95-SE")\
-                .replace("-2-W", "")\
-                .replace("-2-SE-W", "-SE")
+            sku = variant.get("sku")
+                # .replace("BMK-40-9-W", "BMK-40")\
+                # .replace("BMK-95-2-W", "BMK-95-SE")\
+                # .replace("-2-W", "")\
+                # .replace("-2-SE-W", "-SE")
             barcode = variant.get("barcode")
             shopify_product, odoo_product = self.shopify_search_odoo_product_variant(instance, variant_id, sku, barcode)
             if odoo_product:
@@ -511,11 +511,11 @@ class ShopifyProductTemplateEpt(models.Model):
         for variant in variant_data:
             variant_id = variant.get("id")
             # sku = variant.get("sku")
-            sku = variant.get("sku") \
-                .replace("BMK-40-9-W", "BMK-40") \
-                .replace("BMK-95-2-W", "BMK-95-SE")\
-                .replace("-2-W", "")\
-                .replace("-2-SE-W", "-SE")
+            sku = variant.get("sku")
+                # .replace("BMK-40-9-W", "BMK-40") \
+                # .replace("BMK-95-2-W", "BMK-95-SE")\
+                # .replace("-2-W", "")\
+                # .replace("-2-SE-W", "-SE")
             barcode = variant.get("barcode")
 
             message = self.check_sku_barcode(sku, barcode, name, variant_id, instance.shopify_sync_product_with)
