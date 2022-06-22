@@ -77,15 +77,6 @@
         </field>
     </record>
 
-    <record id="action_download_labels" model="ir.actions.server">
-        <field name="name">Download Labels</field>
-        <field name="model_id" ref="stock.model_stock_picking"/>
-        <field name="state">code</field>
-        <field name="binding_model_id" ref="stock.model_stock_picking"/>
-        <field name="binding_view_types">list,form</field>
-        <field name="code">action = records.download_shipping_labels()</field>
-    </record>
-
     <record id="action_reserve_pickings" model="ir.actions.server">
         <field name="name">Reserve Stock</field>
         <field name="model_id" ref="stock.model_stock_picking"/>
@@ -98,6 +89,15 @@
                 if isinstance(res, dict):
                     action = res
         </field>
+    </record>
+
+    <record id="action_download_labels" model="ir.actions.server">
+        <field name="name">Download Labels</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="state">code</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="code">action = records.download_shipping_labels()</field>
     </record>
 
     <record id="action_update_shopify_order" model="ir.actions.server">

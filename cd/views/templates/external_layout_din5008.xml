@@ -9,14 +9,12 @@
                                 <h3 class="mt0" t-field="company.report_header"/>
                             </td>
                             <td>
-                                <img t-if="company.logo" t-att-src="image_data_uri(company.logo)"
-                                     t-att-style="'max-height: %dmm;' % (din_header_spacing or 27)"/>
+                                <img t-if="company.logo" t-att-src="image_data_uri(company.logo)" t-att-style="'max-height: %dmm;' % (din_header_spacing or 27)"/>
                             </td>
                         </tr>
                     </table>
                 </div>
-                <div t-attf-class="din_page invoice_note article o_company_#{company.id}_layout"
-                     t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id">
+                <div t-attf-class="din_page invoice_note article o_company_#{company.id}_layout" t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id">
                     <table>
                         <tr>
                             <td>
@@ -28,17 +26,14 @@
                                         <t t-raw="address"/>
                                     </div>
                                     <div t-else="fallback_address">
-                                        <t t-esc="fallback_address"
-                                           t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;], &quot;no_marker&quot;: True}"/>
+                                        <t t-esc="fallback_address" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;], &quot;no_marker&quot;: True}"/>
                                     </div>
                                 </div>
                             </td>
                             <td>
                                 <div class="information_block">
-                                    <t t-if="'l10n_de_template_data' in company" t-set="template_data"
-                                       t-value="company.l10n_de_template_data"/>
-                                    <t t-if="o and 'l10n_de_template_data' in o" t-set="template_data"
-                                       t-value="o.l10n_de_template_data"/>
+                                    <t t-if="'l10n_de_template_data' in company" t-set="template_data" t-value="company.l10n_de_template_data"/>
+                                    <t t-if="o and 'l10n_de_template_data' in o" t-set="template_data" t-value="o.l10n_de_template_data"/>
                                     <table>
                                         <t t-foreach="template_data" t-as="row">
                                             <tr>
@@ -61,8 +56,7 @@
                                         <strong>
                                             <t t-esc="doc_address[0]"/>
                                         </strong>
-                                        <div t-esc="doc_address[1]"
-                                             t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;], &quot;no_marker&quot;: True}"/>
+                                        <div t-esc="doc_address[1]" t-options="{&quot;widget&quot;: &quot;contact&quot;, &quot;fields&quot;: [&quot;address&quot;, &quot;name&quot;, &quot;phone&quot;], &quot;no_marker&quot;: True}"/>
                                     </div>
                                 </td>
                             </t>
@@ -106,7 +100,9 @@
                                             <t t-set="order_number" t-value="o.invoice_origin"/>
                                         </t>
                                         <t t-if="'shopify_order_number' in o">
-                                            <t t-set="order_number" t-value="'#' + o.shopify_order_number"/>
+                                          <t t-if="o.shopify_order_number is not False">
+                                              <t t-set="order_number" t-value="'#' + o.shopify_order_number"/>
+                                          </t>
                                         </t>
                                         <t t-if="order_number">
                                             <li t-if="'#' in order_number">
@@ -119,6 +115,14 @@
                                                 info@braufaesschen.com
                                             </li>
                                             <li t-else="company.email and '#' not in order_number">
+                                                <span t-field="company.email"/>
+                                            </li>
+                                        </t>
+                                        <t t-else="!order_number">
+                                            <li t-if="company.phone">
+                                                <span t-field="company.phone"/>
+                                            </li>
+                                            <li t-if="company.email">
                                                 <span t-field="company.email"/>
                                             </li>
                                         </t>
