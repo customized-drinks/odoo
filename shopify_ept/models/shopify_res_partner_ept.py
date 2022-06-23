@@ -158,7 +158,7 @@ class ShopifyResPartnerEpt(models.Model):
         country = partner_obj.get_country(country_code)
 
         lang = 'en_US'
-        if 'DE' or 'de' in country_code:
+        if country_code == 'DE':
             lang = 'de_DE'
 
         state = partner_obj.create_or_update_state_ept(country_code, state_code, zipcode, country)
