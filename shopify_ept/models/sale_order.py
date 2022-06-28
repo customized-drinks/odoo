@@ -735,11 +735,11 @@ class SaleOrder(models.Model):
             if len(line['properties']) > 0:
                 for prop in line['properties']:
                     if prop['name'] == 'Product':
-                        prod = '(' + prop['value'] + '): '
+                        prod = prop['value'] + ': '
                     elif prop['name'] == 'Note':
                         note = prop['value']
-        if prod is not '':
-            product_name = product_name + ' ' + prod + note
+        if note is not '':
+            product_name = product_name + ' - ' + prod + note
 
         sku = ''
         if 'code' in product:
@@ -751,6 +751,7 @@ class SaleOrder(models.Model):
             sku = '[' + sku + '] '
 
         product_name = sku + product_name
+        product_name = product_name.replace('Gift Wrap', 'Geschenkverpackung').replace("\n", ' ')
         # product_name = '[' + line['sku'] + '] ' + product_name
 
         line_vals = self.prepare_vals_for_sale_order_line(product, product_name, price, quantity)
