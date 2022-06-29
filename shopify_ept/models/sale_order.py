@@ -731,6 +731,12 @@ class SaleOrder(models.Model):
 
         prod = ''
         note = ''
+
+        if 'variant_title' in line:
+            title = line['variant_title']
+            if title is not '' and title != line['title']:
+                product_name = product_name + ' (' + title + ')'
+
         if 'properties' in line:
             if len(line['properties']) > 0:
                 for prop in line['properties']:
