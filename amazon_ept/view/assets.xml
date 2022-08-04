@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="amazon_assets_backend_inherit" inherit_id="web.assets_backend"
+              name="Backend Assets (used in backend interface)">
+        <xpath expr="." position="inside">
+            <link rel="stylesheet" type="text/scss" href="/amazon_ept/static/src/scss/amazon_graph.scss"/>
+            <script type="text/javascript" src="/amazon_ept/static/src/js/amazon_graph_widget_ept.js"/>
+        </xpath>
+    </template>
+</odoo>
