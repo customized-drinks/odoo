@@ -7,6 +7,7 @@
 #    For more details, check COPYRIGHT and LICENSE files
 #
 ##############################################################################
+import time
 
 from .dhl_de_paket_client import DHLPaketProvider
 
@@ -195,116 +196,134 @@ class ProviderDhlDe(models.Model):
                     _("Test Envirnoment for DHL Configuration %s Not Complete\nPlease check Developer ID, Password, "
                       "Test User and Test Signature fields are set correctly" % self.name))
 
-        srm = DHLPaketProvider(username=dhl_de_paket_username,
-                               password=dhl_de_paket_password,
-                               user=dhl_de_paket_user,
-                               signature=dhl_de_paket_signature,
-                               test_mode=not self.prod_environment,
-                               debug_logger=self.log_xml)
-        srm.login()
-        for picking in pickings:
-            shipping_data = {
-                'tracking_number': "",
-                'dhl_paket_label_url': "",
-                'exact_price': 0.0
-            }
-            response = srm.validate_shipping(picking, self)
-            validation_failed = True
-
-            if response and response.Status and response.Status.statusCode == 0:
-                validation_failed = False
-            else:
-                if not response:
-                    logmessage = (_("No Response from DHL"))
-                else:
-                    logmessage = "An error occurred. \nStatus Code: %s, Status Text: %s" % (
-                        ustr(response.Status.statusCode),
-                        ustr(response.Status.statusText))
-                    logmessage += "\nFull Response:\n %s" % (ustr(response))
-                picking.message_post(body=logmessage)
-                picking.sudo().sale_id.message_post(body=logmessage)
-
-            if not validation_failed:
-                response = srm.send_shipping(picking, self)
-                # carrier_tracking_ref = []
-                label_urls = []
-                label_pdfs = []
-                track_numbers = []
-                carrier_tracking_link = []
-                ret_tracking_number_dict = {}
-                ret_label_dict = {}
-                for creationState in response.CreationState:
-                    if creationState.LabelData.Status.statusCode in ["0", 0]:
-                        tracking_number = creationState.shipmentNumber
-                        if self.return_label_on_delivery:
-                            ret_tracking_number_dict.update({tracking_number: creationState.returnShipmentNumber})
-                        track_numbers.append(tracking_number)
-                        tracker_url = 'https://nolp.dhl.de/nextt-online-public/en/search?piececode=%s' % tracking_number
-                        carrier_tracking_link.append('<a href=' + tracker_url + '>' + tracking_number + '</a><br/>')
-
-                        if hasattr(creationState.LabelData, 'labelUrl'):
-                            label_urls.append('<a href=' + creationState.LabelData.labelUrl + '>' + tracking_number +
-                                              '</a><br/>')
-                        elif dhl_label_format == 'PDF':
-                            label_pdfs.append(('LabelDHL-%s.%s' % (tracking_number, dhl_label_format),
-                                               base64.b64decode(creationState.LabelData.labelData)))
-                        else:
-                            label_pdfs.append(('LabelDHL-%s.%s' % (tracking_number, dhl_label_format),
-                                               creationState.LabelData.labelData))
-                        if self.return_label_on_delivery:
-                            ret_tracking_number = creationState.returnShipmentNumber
-                            ret_tracking_number_dict.update({tracking_number: ret_tracking_number})
-                            if hasattr(creationState.LabelData, 'returnlabelUrl'):
-                                ret_label_dict.update({
-                                    ret_tracking_number: '<a href=' + creationState.LabelData.returnLabelUrl + '>' +
-                                                         ret_tracking_number + '</a><br/>'
-                                })
-                            elif dhl_label_format == 'PDF':
-                                ret_label_dict.update({
-                                    ret_tracking_number: ('%s-%s-%s.%s' % (self.get_return_label_prefix(), ret_tracking_number,
-                                                                          tracking_number, dhl_label_format),
-                                                   base64.b64decode(creationState.LabelData.returnLabelData))
-                                })
-                            else:
-                                ret_label_dict.update({
-                                    ret_tracking_number:('%s-%s-%s.%s' % (self.get_return_label_prefix(), ret_tracking_number,
-                                                                          tracking_number, dhl_label_format),
-                                                   creationState.LabelData.returnLabelData)
-                                })
-
-                        picking.dhl_paket_label_url = tracker_url
-
-                    else:
-                        logmessage = (_("Failed Creating Label <br/> %s : %s") % (
-                            creationState.StatusCode,
-                            ustr(creationState)))
-                        picking.message_post(body=logmessage)
-                        picking.sudo().sale_id.message_post(body=logmessage)
-#                         raise except_orm(_("Error!!"), logmessage)
-                logmessage = _("Shipment created into DHL <br/> <b>Tracking Number(s): </b>%s<br/>\n") % (
-                                  ', '.join(carrier_tracking_link))
-                if label_urls:
-                    logmessage += _("<b>Label Url(s): </b>  %s" % ', '.join(label_urls))
-                    picking.message_post(body=logmessage)
-                    if picking.sale_id:
-                        picking.sudo().sale_id.message_post(body=logmessage)
-                if label_pdfs:
-                    picking.message_post(body=logmessage, attachments=label_pdfs)
-                    if picking.sale_id:
-                        picking.sudo().sale_id.message_post(body=logmessage, attachments=label_pdfs)
-                if ret_label_dict:
-                    logmessage = _("<b>Return Label Generated. Return Tracking Number(s): </b>  %s" % ', '.join(list(ret_label_dict.keys())))
-                    picking.message_post(body=logmessage, attachments=list(ret_label_dict.values()))
-                    picking.sudo().sale_id.message_post(body=logmessage, attachments=list(ret_label_dict.values()))
+        try:
+            srm = DHLPaketProvider(username=dhl_de_paket_username,
+                                   password=dhl_de_paket_password,
+                                   user=dhl_de_paket_user,
+                                   signature=dhl_de_paket_signature,
+                                   test_mode=not self.prod_environment,
+                                   debug_logger=self.log_xml)
+            srm.login()
+            for picking in pickings:
                 shipping_data = {
-                    'tracking_number': ', '.join(track_numbers),
-                    'exact_price': 0.0,
-                    'dhl_paket_label_url': ', '.join(label_urls)
+                    'tracking_number': "",
+                    'dhl_paket_label_url': "",
+                    'exact_price': 0.0
                 }
-            picking.dhl_paket_label_url = shipping_data['dhl_paket_label_url']
-            res = res + [shipping_data]
+                response = srm.validate_shipping(picking, self)
+                validation_failed = True
 
-        return res
+                if response and response.Status and response.Status.statusCode == 0:
+                    validation_failed = False
+                else:
+                    if not response:
+                        logmessage = (_("No Response from DHL"))
+                    else:
+                        logmessage = "An error occurred. \nStatus Code: %s, Status Text: %s" % (
+                            ustr(response.Status.statusCode),
+                            ustr(response.Status.statusText))
+                        logmessage += "\nFull Response:\n %s" % (ustr(response))
+                    picking.message_post(body=logmessage)
+                    picking.sudo().sale_id.message_post(body=logmessage)
+                    raise UserError(_(logmessage))
+
+                if not validation_failed:
+                    response = srm.send_shipping(picking, self)
+                    # carrier_tracking_ref = []
+                    label_urls = []
+                    label_pdfs = []
+                    track_numbers = []
+                    carrier_tracking_link = []
+                    ret_tracking_number_dict = {}
+                    ret_label_dict = {}
+                    for creationState in response.CreationState:
+                        if creationState.LabelData.Status.statusCode in ["0", 0]:
+                            tracking_number = creationState.shipmentNumber
+                            if self.return_label_on_delivery:
+                                ret_tracking_number_dict.update({tracking_number: creationState.returnShipmentNumber})
+                            track_numbers.append(tracking_number)
+                            tracker_url = 'https://nolp.dhl.de/nextt-online-public/en/search?piececode=%s' % tracking_number
+                            carrier_tracking_link.append('<a href=' + tracker_url + '>' + tracking_number + '</a><br/>')
+
+                            if hasattr(creationState.LabelData, 'labelUrl'):
+                                label_urls.append('<a href=' + creationState.LabelData.labelUrl + '>' + tracking_number +
+                                                  '</a><br/>')
+                            elif dhl_label_format == 'PDF':
+                                label_pdfs.append(('LabelDHL-%s.%s' % (tracking_number, dhl_label_format),
+                                                   base64.b64decode(creationState.LabelData.labelData)))
+                            else:
+                                label_pdfs.append(('LabelDHL-%s.%s' % (tracking_number, dhl_label_format),
+                                                   creationState.LabelData.labelData))
+                            if self.return_label_on_delivery:
+                                ret_tracking_number = creationState.returnShipmentNumber
+                                ret_tracking_number_dict.update({tracking_number: ret_tracking_number})
+                                if hasattr(creationState.LabelData, 'returnlabelUrl'):
+                                    ret_label_dict.update({
+                                        ret_tracking_number: '<a href=' + creationState.LabelData.returnLabelUrl + '>' +
+                                                             ret_tracking_number + '</a><br/>'
+                                    })
+                                elif dhl_label_format == 'PDF':
+                                    ret_label_dict.update({
+                                        ret_tracking_number: ('%s-%s-%s.%s' % (self.get_return_label_prefix(), ret_tracking_number,
+                                                                              tracking_number, dhl_label_format),
+                                                       base64.b64decode(creationState.LabelData.returnLabelData))
+                                    })
+                                else:
+                                    ret_label_dict.update({
+                                        ret_tracking_number:('%s-%s-%s.%s' % (self.get_return_label_prefix(), ret_tracking_number,
+                                                                              tracking_number, dhl_label_format),
+                                                       creationState.LabelData.returnLabelData)
+                                    })
+
+                            picking.dhl_paket_label_url = tracker_url
+
+                        else:
+                            logmessage = (_("Failed Creating Label <br/> %s : %s") % (
+                                creationState.StatusCode,
+                                ustr(creationState)))
+                            picking.message_post(body=logmessage)
+                            picking.sudo().sale_id.message_post(body=logmessage)
+                            raise UserError(_(logmessage))
+    #                         raise except_orm(_("Error!!"), logmessage)
+                    if not label_pdfs and not label_urls:
+                        raise UserError(_("Labels could not be transferred for this tracking number: " + str("".join(track_numbers))))
+
+                    logmessage = _("Shipment created into DHL <br/> <b>Tracking Number(s): </b>%s<br/>\n") % (
+                                      ', '.join(carrier_tracking_link))
+                    if label_urls:
+                        logmessage += _("<b>Label Url(s): </b>  %s" % ', '.join(label_urls))
+                        picking.message_post(body=logmessage)
+                        if picking.sale_id:
+                            picking.sudo().sale_id.message_post(body=logmessage)
+                    if label_pdfs:
+                        picking.message_post(body=logmessage, attachments=label_pdfs)
+                        if picking.sale_id:
+                            picking.sudo().sale_id.message_post(body=logmessage, attachments=label_pdfs)
+                    if ret_label_dict:
+                        logmessage = _("<b>Return Label Generated. Return Tracking Number(s): </b>  %s" % ', '.join(list(ret_label_dict.keys())))
+                        picking.message_post(body=logmessage, attachments=list(ret_label_dict.values()))
+                        picking.sudo().sale_id.message_post(body=logmessage, attachments=list(ret_label_dict.values()))
+                    time.sleep(5)
+
+                    attachment_ids = self.env['ir.attachment'].search(
+                        [('res_model', '=', 'stock.picking'), ('res_id', '=', picking.id),
+                         ('mimetype', '=', 'application/pdf')])
+
+                    if not attachment_ids:
+                        raise UserError(_("No shipping labels available for selected records."))
+
+                    shipping_data = {
+                        'tracking_number': ', '.join(track_numbers),
+                        'exact_price': 0.0,
+                        'dhl_paket_label_url': ', '.join(label_urls)
+                    }
+
+                picking.dhl_paket_label_url = shipping_data['dhl_paket_label_url']
+                res = res + [shipping_data]
+
+            return res
+        except Exception as e:
+            raise UserError(_(e))
 
     def dhl_de_paket_get_tracking_link(self, pickings):
         res = []
