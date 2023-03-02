@@ -303,7 +303,7 @@ class ProviderDhlDe(models.Model):
                         logmessage = _("<b>Return Label Generated. Return Tracking Number(s): </b>  %s" % ', '.join(list(ret_label_dict.keys())))
                         picking.message_post(body=logmessage, attachments=list(ret_label_dict.values()))
                         picking.sudo().sale_id.message_post(body=logmessage, attachments=list(ret_label_dict.values()))
-                    time.sleep(5)
+                    time.sleep(2)
 
                     attachment_ids = self.env['ir.attachment'].search(
                         [('res_model', '=', 'stock.picking'), ('res_id', '=', picking.id),

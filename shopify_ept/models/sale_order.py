@@ -732,9 +732,12 @@ class SaleOrder(models.Model):
         prod = ''
         note = ''
 
+        if product_name is None:
+            product_name = ''
+
         if 'variant_title' in line:
             title = line['variant_title']
-            if title is not '' and title != line['title']:
+            if title is not '' and title is not None and title != line['title']:
                 product_name = product_name + ' (' + title + ')'
 
         if 'properties' in line:
