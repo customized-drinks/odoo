@@ -86,6 +86,19 @@ class AmazonSellerConfig(models.TransientModel):
             }
             trans_line_obj.create(trans_line_vals)
 
+    def amz_create_sales_team(self, seller):
+        """
+        Define this method for create sales team for amazon seller.
+        :param: seller: amazon.seller.ept()
+        :return: crm.team()
+        """
+        crm_team_obj = self.env['crm.team']
+        team_name = "Amazon-" + seller.name
+        amz_sales_team = crm_team_obj.search([('name', '=', team_name)], limit=1)
+        if not amz_sales_team:
+            amz_sales_team = crm_team_obj.create({'name': team_name})
+        return amz_sales_team
+
     def update_reimbursement_details(self, seller):
         """
         This is used to update the Reimbursement details in seller.
@@ -141,12 +154,14 @@ class AmazonSellerConfig(models.TransientModel):
             company_id = self.company_id or self.env.user.company_id or False
             vals = self.prepare_amazon_seller_vals(company_id)
             if self.country_id.code in ['AE', 'DE', 'EG', 'ES', 'FR', 'GB', 'IN', 'IT', 'SA', \
-                                        'TR', 'NL', 'SE']:
+                                        'TR', 'NL', 'SE', 'BE']:
                 vals.update({'is_european_region': True})
             else:
                 vals.update({'is_european_region': False})
             try:
                 seller = amazon_seller_obj.create(vals)
+                # create amazon sales team for the seller
+                self.amz_create_sales_team(seller)
                 seller.load_marketplace()
                 self.create_transaction_type(seller)
 

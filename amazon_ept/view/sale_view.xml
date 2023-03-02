@@ -36,7 +36,7 @@
         <field name="view_mode">tree,kanban,form,calendar,pivot,graph,activity</field>
         <field name="search_view_id" ref="sale.sale_order_view_search_inherit_sale"/>
         <field name="context">
-            {'search_default_group_by_amz_seller_id':1,'search_default_group_by_instance':1}
+            {}
         </field>
         <field name="domain">[('state', 'not in', ('draft', 'sent', 'cancel'))]</field>
         <field name="help" type="html">
@@ -56,13 +56,17 @@
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//page[@name='order_lines']/field[@name='order_line']/tree/field[@name='price_subtotal']"
+                   position="after">
+                <field name="warehouse_id_ept" string="Warehouse" optional="hide"/>
+            </xpath>
             <button name="action_quotation_send" position="before">
                 <field name="warehouse_id" invisible="1"/>
             </button>
             <button name="action_confirm" position="after">
                 <button name="create_outbound_shipment" string="Create Outbound Shipment"
                         type="object"
-                        attrs="{'invisible':['|','|','|',('state','!=','sale'),('order_has_fba_warehouse','=',False),('amz_is_outbound_order','=',True),('is_fba_pending_order','=',True)]}"/>
+                        attrs="{'invisible':['|','|','|',('state','not in', ['sale', 'done']),('order_has_fba_warehouse','=',False),('amz_is_outbound_order','=',True),('is_fba_pending_order','=',True)]}"/>
             </button>
             <field name="warehouse_id" position="after">
                 <field name="amz_is_outbound_order" invisible="1"/>

@@ -144,7 +144,7 @@ class StockPicking(models.Model):
                                       SellerSKU : %s  Shipped Qty : %s Received Qty : %s                          
                                                  """ % (asin, sku, shipped_qty, received_qty),
                         'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
-                        'res_id': picking.odoo_shipment_id.name,
+                        'res_id': picking.odoo_shipment_id.id,
                         'log_book_id': job_id.id
                     }
                     log_line_obj.create(vals)

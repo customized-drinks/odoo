@@ -55,6 +55,15 @@
                         below
                     </p>
                 </group>
+                <group attrs="{'invisible':[('amazon_program', '!=', 'efn')]}">
+                    <p class="alert alert-warning" role="alert">Note:
+                        <li>If the user will select a UK marketplace then
+                        the system will auto create an FBA warehouse for the UK marketplace.</li>
+                        <li>
+                            Store inventory is required if you select any marketplace other than UK.
+                        </li>
+                    </p>
+                </group>
                 <group>
                     <field name="seller_id" widget="selection" class="oe_inline" readonly="1"
                            force_save="1"/>
@@ -156,7 +165,8 @@
                     </group>
                 </group>
 
-                <group attrs="{'invisible':[('amazon_program','!=','pan_eu')]}">
+                <group string="Other Marketplaces"
+                        attrs="{'invisible':[('amazon_program','not in', ['pan_eu', 'efn'])]}">
                     <field name="other_marketplace_ids" widget="many2many_checkboxes"
                            nolabel="1"
                            domain="[('market_place_id', 'in', ['A1F83G8C2ARO7P']), ('seller_id','=',seller_id)]"/>
@@ -196,28 +206,21 @@
 
     <record id="view_config_amazon_transaction_type" model="ir.ui.view">
         <field name="name">Configure Amazon Seller Transaction Type</field>
-        <field name="model">amazon.seller.ept</field>
-        <field name="priority">1000</field>
+        <field name="model">amazon.transaction.line.ept</field>
+        <field name="type">tree</field>
         <field name="arch" type="xml">
-            <form string="Configure Amazon Transaction Type">
-                <group>
-                    <field name='transaction_line_ids' nolabel="1">
-                        <tree editable="top">
-                            <field name='transaction_type_id' required="1"/>
-                            <field name='account_id' required="1"/>
-                            <field name="analytic_account_id" groups="analytic.group_analytic_accounting"/>
-                            <field name="tax_id" domain="[('price_include','=',True)]"/>
-                        </tree>
-                    </field>
-                </group>
-
-            </form>
+            <tree editable="top" multi_edit="1">
+                <field name='transaction_type_id' required="1"/>
+                <field name='account_id' required="1"/>
+                <field name="analytic_account_id" groups="analytic.group_analytic_accounting"/>
+                <field name="tax_id" domain="[('price_include','=',True)]"/>
+            </tree>
         </field>
     </record>
 
     <record id="res_config_action_amazon_transaction_type" model="ir.actions.act_window">
         <field name="name">Amazon Transaction Type</field>
-        <field name="res_model">amazon.seller.ept</field>
+        <field name="res_model">amazon.transaction.line.ept</field>
         <field name="view_id" ref="amazon_ept.view_config_amazon_transaction_type"/>
     </record>
 
@@ -581,7 +584,7 @@
                                     </div>
                                     <div class="o_setting_right_pane">
                                         <label for="amz_is_reserved_qty_included_inventory_report"
-                                               string="Is Reserved Qyantity to be included FBA Live Inventory Report?"/>
+                                               string="Is Reserved Quantity to be included in FBA Live Inventory Report?"/>
                                         <div class="text-muted">
                                             If true them system will include FBA reserve stock
                                             into real stock.

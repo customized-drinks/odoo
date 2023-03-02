@@ -81,7 +81,7 @@
                         attrs="{'invisible':['|',('all_lines_reconciled', '=', False),('state','=','confirm')]}"
                         class="oe_highlight"
                         type="object" />
-                    <field name="state" widget="statusbar" statusbar_visible="SUBMITTED,IN_PROGRESS,DONE" />
+                    <field name="state" widget="statusbar" statusbar_visible="SUBMITTED,IN_PROGRESS,_DONE_" />
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">

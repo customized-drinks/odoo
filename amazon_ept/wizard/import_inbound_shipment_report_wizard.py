@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from odoo import models, fields, _
 from odoo.exceptions import UserError, ValidationError
+from dateutil import parser
 
 try:
     from io import StringIO
@@ -184,7 +185,7 @@ class AmazonInboundShipmentReportWizard(models.TransientModel):
                     'box_no': box_no,
                     'weight_value': row.get("Weight", 0.0),
                     'weight_unit': row.get("Weight Unit", ""),
-                    'box_expiration_date': row.get('Expiry Date', False)
+                    'box_expiration_date': parser.parse(row.get('Expiry Date', False))
                 }
                 if parcel_dict.get(box_no, False):
                     carton_info = parcel_dict.get(box_no, {}).get('carton_info_ids', [])

@@ -202,17 +202,18 @@ class AccountMove(models.Model):
         report_obj = self.env['ir.actions.report']
         account = self.env['iap.account'].search([('service_name', '=', 'amazon_ept')])
         dbuuid = self.env['ir.config_parameter'].sudo().get_param('database.uuid')
-        metadata = "metadata:orderid={};metadata:totalAmount={};metadata:totalvatamount={};metadata:invoicenumber={};" \
-                   "metadata:documenttype={}".format(self.amz_sale_order_id.amz_order_reference, self.amount_total,
-                                                     self.amount_tax, self.display_name,
-                                                     'Invoice' if self.move_type == 'out_invoice' else 'CreditNote')
+        metadata = {'metadata:orderid': self.amz_sale_order_id.amz_order_reference,
+                    'metadata:totalamount': self.amount_total,
+                    'metadata:totalvatamount': self.amount_tax,
+                    'metadata:invoicenumber': self.name,
+                    'metadata:documenttype': 'Invoice' if self.move_type == 'out_invoice' else 'CreditNote'}
         report_name = instance.seller_id.amz_invoice_report.report_name if instance.seller_id.amz_invoice_report else 'account.report_invoice'
         report = report_obj._get_report_from_name(report_name)
         result, result_type = report._render_qweb_pdf(res_ids=self.ids)
         invoice_pdf = base64.b64encode(result).decode('utf-8')
         return {'merchant_id': instance.seller_id.merchant_id and str(instance.seller_id.merchant_id) or False,
                 'app_name': 'amazon_ept_spapi',
-                'emipro_api': 'amazon_submit_feeds_sp_api',
+                'emipro_api': 'amazon_upload_vat_invoices_sp_api',
                 'feed_type': 'UPLOAD_VAT_INVOICE',
                 'account_token': account.account_token,
                 'dbuuid': dbuuid,

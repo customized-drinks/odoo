@@ -45,9 +45,6 @@
                 <header>
                     <button name="get_feed_submission_result" string="Get Feed Result"
                             class="oe_highlight" type="object"/>
-                    <!-- Attrs was removed temporary need to add again once we take changes
-                    based on feed result status -->
-<!--                    attrs="{'invisible':[('feed_result','!=',False)]}" -->
                 </header>
                 <sheet>
                     <group>

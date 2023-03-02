@@ -9,8 +9,11 @@ import requests
 from datetime import datetime
 from odoo import SUPERUSER_ID
 from odoo import models, fields, api, _
+from odoo.addons.iap.tools import iap_tools
 from odoo.exceptions import UserError
 from odoo.http import request
+
+from ..endpoint import DEFAULT_ENDPOINT
 
 AMAZON_INSTANCE_EPT = 'amazon.instance.ept'
 
@@ -613,13 +616,14 @@ class AmazonConfigSettings(models.TransientModel):
         :return: {}
         """
         url = 'https://iap.odoo.com/iap/1/credit?dbuuid='
-        dbuuid = self.env['ir.config_parameter'].sudo(
-        ).get_param('database.uuid')
+        dbuuid = self.env['ir.config_parameter'].sudo().get_param('database.uuid')
         service_name = 'amazon_ept'
         account = self.env['iap.account'].search([('service_name', '=', 'amazon_ept')])
         if not account:
             account = self.env['iap.account'].create({'service_name': 'amazon_ept'})
         account_token = account.account_token
+        if not account_token:
+            account_token = self.get_account_token_ept(dbuuid)
         url = ('%s%s&service_name=%s&account_token=%s&credit=1') % (
             url, dbuuid, service_name, account_token)
         return {
@@ -627,6 +631,19 @@ class AmazonConfigSettings(models.TransientModel):
             'url': url,
             'target': 'new'
         }
+
+    @staticmethod
+    def get_account_token_ept(database_uid):
+        """
+        This method will help to find account_token from IAP for buy amazon connector IAP pack.
+        :param database_uid: database id
+        :return str: IAP Account token
+        """
+        kwargs = {'database_uid': database_uid}
+        response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT + '/get_amz_iap_token', params=kwargs, timeout=1000)
+        if response.get('error', False):
+            raise UserError(_(response.get('error', False)))
+        return response.get('amz_iap_token', '')
 
     def register_seller(self):
         """
@@ -649,7 +666,7 @@ class AmazonConfigSettings(models.TransientModel):
         """
         action = self.env.ref('amazon_ept.res_config_action_amazon_transaction_type', False)
         result = action.read()[0] if action else {}
-        result.update({'res_id': request.session['amz_seller_id']})
+        result.update({'domain': [('seller_id', '=', request.session['amz_seller_id'])]})
         return result
 
     def create_vcs_tax(self):

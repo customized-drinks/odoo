@@ -117,6 +117,8 @@ class AmazonProcessImportExport(models.TransientModel):
     user_warning = fields.Text(string="Note: ", store=False)
     pan_eu_instance_id = fields.Many2one('amazon.instance.ept', string='Instance(UK)',
                                          help="This Field relocates amazon UK instance.")
+    efn_eu_instance_id = fields.Many2one('amazon.instance.ept', string='EFN Instance(UK)',
+                                         help="This Field relocates amazon UK instance.")
     us_region_instance_id = fields.Many2one('amazon.instance.ept', string='Instance(US)',
                                             help="This Field relocates amazon North America Region instance.")
     country_code = fields.Char(related='seller_id.country_id.code', string='Country Code')
@@ -315,6 +317,7 @@ class AmazonProcessImportExport(models.TransientModel):
                 'start_date': self.report_start_date,
                 'end_date': self.report_end_date
             })
+            rating_report_record.request_report()
             return {
                 'name': _('Rating Report Request History'),
                 'view_type': 'form',
@@ -329,18 +332,49 @@ class AmazonProcessImportExport(models.TransientModel):
             return sale_order_obj.amz_update_tracking_number(self.seller_id)
 
         if self.operations == 'Import_FBM_Shipped_Orders':
-            return sale_order_obj.import_fbm_shipped_or_missing_unshipped_orders(self.seller_id, self.instance_ids,
-                                                                                 self.fbm_order_updated_after_date, ['Shipped'])
+            data_queue = sale_order_obj.import_fbm_shipped_or_missing_unshipped_orders(self.seller_id,
+                                                                                       self.instance_ids,
+                                                                                    self.fbm_order_updated_after_date,
+                                                                                    ['Shipped'])
+            if not data_queue:
+                return False
+            action = {
+                'name': _('FBM Shipped orders'),
+                'res_model': 'shipped.order.data.queue.ept',
+                'type': 'ir.actions.act_window',
+            }
+            if len(data_queue) == 1:
+                action.update({'res_id': data_queue[0],
+                               'view_mode': 'form'})
+            else:
+                action.update({'domain': [('id', 'in', data_queue)],
+                               'view_mode': 'tree,form'})
+            return action
+
         if self.operations == 'Import_Missing_Unshipped_Orders':
-            return sale_order_obj.import_fbm_shipped_or_missing_unshipped_orders(self.seller_id, self.instance_ids,
-                                                                                 self.fbm_order_updated_after_date,
-                                                                                 ['Unshipped', 'PartiallyShipped'])
+            data_queue = sale_order_obj.import_fbm_shipped_or_missing_unshipped_orders(self.seller_id,
+                                                                                          self.instance_ids,
+                                                                                    self.fbm_order_updated_after_date,
+                                                                                    ['Unshipped', 'PartiallyShipped'])
+            if not data_queue:
+                return False
+            action = {
+                'name': _('FBM Missing orders'),
+                'res_model': 'shipped.order.data.queue.ept',
+                'type': 'ir.actions.act_window',
+            }
+            if len(data_queue) == 1:
+                action.update({'res_id': data_queue[0],
+                               'view_mode': 'form'})
+            else:
+                action.update({'domain': [('id', 'in', data_queue)],
+                               'view_mode': 'tree,form'})
+            return action
 
         if self.operations == "Import_Unshipped_Orders":
             self.with_context({'raise_warning': True}).check_running_schedulers(
                 'ir_cron_import_amazon_orders_seller_')
-            report_type = 'GET_FLAT_FILE_ORDER_REPORT_DATA_INVOICING' if self.seller_id.is_european_region else \
-                'GET_FLAT_FILE_ORDER_REPORT_DATA_TAX'
+            report_type = 'GET_FLAT_FILE_ORDER_REPORT_DATA_SHIPPING'
             record = fbm_sale_order_report_obj.create({
                 'seller_id': self.seller_id.id,
                 'report_type': report_type,
@@ -415,6 +449,7 @@ class AmazonProcessImportExport(models.TransientModel):
                 'start_date': self.report_start_date,
                 'end_date': self.report_end_date
             })
+            removal_order_request_report_record.request_report()
             return {
                 'name': _('Removal Order Report Request History'),
                 'view_type': 'form',
@@ -451,10 +486,24 @@ class AmazonProcessImportExport(models.TransientModel):
         if self.fba_operations == "Import Inbound Shipment":
             self.with_context({'raise_warning': True}).check_running_schedulers(
                 'ir_cron_inbound_shipment_check_status_')
-            import_shipment_obj.get_inbound_import_shipment(self.instance_id,
-                                                            self.from_warehouse_id,
-                                                            self.shipment_id,
-                                                            self.ship_to_address)
+            inbound_shipment_list = import_shipment_obj.get_inbound_import_shipment(self.instance_id,
+                                                                                    self.from_warehouse_id,
+                                                                                    self.shipment_id,
+                                                                                    self.ship_to_address)
+            if not inbound_shipment_list:
+                return False
+            action = {
+                'name': 'Inbound Shipments',
+                'res_model': 'amazon.inbound.shipment.ept',
+                'type': 'ir.actions.act_window'
+            }
+            if len(inbound_shipment_list) == 1:
+                action.update({'res_id': inbound_shipment_list[0],
+                               'view_mode': 'form'})
+            else:
+                action.update({'domain': [('id', 'in', inbound_shipment_list)],
+                               'view_mode': 'tree,form'})
+            return action
 
         if self.fba_operations == "Create_Inbound_Shipment_Plan":
             return self.wizard_create_inbound_shipment_plan(self.instance_id)
@@ -552,8 +601,7 @@ class AmazonProcessImportExport(models.TransientModel):
         shipment_tree_view = self.env.ref('amazon_ept.amazon_shipping_report_request_history_tree_view_ept')
         shipment_form_view = self.env.ref('amazon_ept.amazon_shipping_report_request_history_form_view_ept')
         shipping_report_record_list = []
-        report_type = 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_INVOICING' if self.seller_id.is_european_region else \
-            'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_TAX'
+        report_type = 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_GENERAL'
         if self.seller_id.is_another_soft_create_fba_shipment:
             shipment_report_values = {'report_type': report_type,
                                       'name': 'FBA Shipping Report', 'model_obj': fba_shipping_report_obj,
@@ -637,8 +685,11 @@ class AmazonProcessImportExport(models.TransientModel):
             elif self.seller_id.amz_fba_us_program == 'narf':
                 instance_ids = self.seller_id.instance_ids.filtered(lambda instance: instance.market_place_id == 'ATVPDKIKX0DER')
             else:
-                instance_ids = self.seller_id.instance_ids.filtered(
-                    lambda instance: instance.country_id.id == self.seller_id.store_inv_wh_efn.id)
+                if self.efn_eu_instance_id:
+                    instance_ids = self.efn_eu_instance_id
+                else:
+                    instance_ids = self.seller_id.instance_ids.filtered(
+                        lambda instance: instance.country_id.id == self.seller_id.store_inv_wh_efn.id)
             start_date = (datetime.today().date() - timedelta(days=1)).strftime('%Y-%m-%d 00:00:00')
             end_date = (datetime.today().date() - timedelta(days=1)).strftime('%Y-%m-%d 23:59:59')
 
@@ -683,7 +734,6 @@ class AmazonProcessImportExport(models.TransientModel):
         dbuuid = self.env['ir.config_parameter'].sudo().get_param('database.uuid')
         return {
             'merchant_id': seller.merchant_id and str(seller.merchant_id) or False,
-            'auth_token': seller.auth_token and str(seller.auth_token) or False,
             'app_name': 'amazon_ept_spapi',
             'account_token': account.account_token,
             'emipro_api': 'get_reports_sp_api',
@@ -931,6 +981,8 @@ class AmazonProcessImportExport(models.TransientModel):
             if not skip_line:
                 instance_dict, map_product_count = self.amz_mapped_imports_products_ept(
                     line, instance_dict, map_product_count, log_rec)
+            if (map_product_count % 100) == 0:
+                self._cr.commit()
         return map_product_count, log_rec
 
     def amz_map_import_xls_ept(self, log_rec):
@@ -962,6 +1014,8 @@ class AmazonProcessImportExport(models.TransientModel):
                 if not skip_line:
                     instance_dict, map_product_count = self.amz_mapped_imports_products_ept(
                         row, instance_dict, map_product_count, log_rec)
+                if (map_product_count % 100) == 0:
+                    self._cr.commit()
         return map_product_count, log_rec
 
     def amz_mapped_imports_products_ept(self, line, instance_dict, map_product_count, log_rec):
@@ -1179,8 +1233,7 @@ class AmazonProcessImportExport(models.TransientModel):
 
         amazon_product_ept_obj.create({'name': amazon_product_name or product_id.name,
                                        'fulfillment_by': fulfillment, 'product_id': product_id.id,
-                                       'seller_sku': seller_sku, 'instance_id': instance.id,
-                                       'exported_to_amazon': True})
+                                       'seller_sku': seller_sku, 'instance_id': instance.id})
         return True
 
     def wizard_create_inbound_shipment_plan(self, instance):

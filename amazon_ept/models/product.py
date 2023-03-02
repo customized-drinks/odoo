@@ -399,7 +399,7 @@ class AmazonProductEpt(models.Model):
         :param product: This arguments relocates product of amazon.
         :return: This method return item dimension envelope message for amazon.
         """
-        if product.item_dimensions_uom:
+        if product.item_dimensions_uom and product.item_length and product.item_width and product.item_height:
             return """
                     <ItemDimensions>
                         <Length unitOfMeasure="%s">%s</Length>
@@ -411,7 +411,8 @@ class AmazonProductEpt(models.Model):
                 product.item_dimensions_uom, str(round(float(product.item_length), 2)),
                 product.item_dimensions_uom, \
                 str(round(float(product.item_width), 2)), product.item_dimensions_uom, \
-                str(round(float(product.item_width), 2)))
+                str(round(float(product.item_height), 2)))
+        return False
 
     @staticmethod
     def get_package_dimension(product):
@@ -420,7 +421,8 @@ class AmazonProductEpt(models.Model):
         :param product: This arguments relocates product of amazon.
         :return: This method return package dimension envelope message for amazon.
         """
-        if product.package_dimensions_uom:
+        if product.package_dimensions_uom and product.package_length and product.package_width and \
+                product.package_height:
             return """
                     <PackageDimensions>
                         <Length unitOfMeasure="%s">%s</Length>
@@ -432,7 +434,8 @@ class AmazonProductEpt(models.Model):
                 product.package_dimensions_uom, str(round(float(product.package_length), 2)),
                 product.item_dimensions_uom,
                 str(round(float(product.package_width), 2)), product.item_dimensions_uom,
-                str(round(float(product.package_width), 2)))
+                str(round(float(product.package_height), 2)))
+        return False
 
     @staticmethod
     def get_condition(product):
@@ -442,9 +445,10 @@ class AmazonProductEpt(models.Model):
         :return: This method return condition envelope message for amazon.
         """
         if product.condition:
+            item_condition = 'New' if product.condition == 'NewItem' else product.condition
             return """<Condition>
                             <ConditionType>%s</ConditionType>
-                      </Condition>""" % product.condition
+                      </Condition>""" % item_condition
         return False
 
     @staticmethod
@@ -886,8 +890,8 @@ class AmazonProductEpt(models.Model):
         """
         args = list(args or [])
         if name:
-            args = ['|', '|', '|', ('seller_sku', operator, name), ('name', operator, name),
-                    ('product_id.name', operator, name), ('product_id.default_code', operator, name)]
+            args.extend(['|', '|', '|', ('seller_sku', operator, name), ('name', operator, name),
+                         ('product_id.name', operator, name), ('product_id.default_code', operator, name)])
         return self._search(args, limit=limit, access_rights_uid=name_get_uid)
 
 class ProductProduct(models.Model):

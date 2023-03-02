@@ -116,7 +116,7 @@ class AmazonMarketplaceConfig(models.TransientModel):
         is_european = self.seller_id.marketplace_ids.filtered(
             lambda x: x.market_place_id in ['A1PA6795UKMFR9', 'A1RKKUPIHCS9HS', 'A13V1IB3VIYZZH', 'A1F83G8C2ARO7P',
                                             'APJ6JRA9NG5V4', 'A1805IZSGTT6HS', 'A2NODRKZP88ZB9', 'A1C3SOZRARQ6R3',
-                                            'A33AVAJ2PDY3EV'])
+                                            'A33AVAJ2PDY3EV', 'A21TJRUUN4KGV'])
                                 #'A2VIGQ35RCS4UG',  'ARBP9OOSHTCHU','A21TJRUUN4KGV', 'A17E79C6D8DWNP', 'A33AVAJ2PDY3EV'
         if is_european:
             self.is_european_region = True
@@ -187,7 +187,8 @@ class AmazonMarketplaceConfig(models.TransientModel):
                                                  'A1805IZSGTT6HS',
                                                  'A1PA6795UKMFR9',
                                                  'A2NODRKZP88ZB9',
-                                                 'A1C3SOZRARQ6R3'])
+                                                 'A1C3SOZRARQ6R3',
+                                                 'AMEN7PMS3EDWL'])
             self.pan_eu_marketplace_ids = marketplace_ids.ids
             return {'domain': {'pan_eu_marketplace_ids': [('id', 'in', marketplace_ids.ids)]}}
         if self.amazon_program == 'cep':
@@ -645,6 +646,20 @@ class AmazonMarketplaceConfig(models.TransientModel):
 
                     if resupply_wh and warehouse_id:
                         resupply_wh.write({'resupply_wh_ids': [warehouse_id]})
+                if self.other_marketplace_ids:
+                    for other_marketplace in self.other_marketplace_ids:
+                        instance_exist = self.seller_id.instance_ids.filtered(lambda x: x.marketplace_id.id == other_marketplace.id)
+                        # Create separate unsellable locations for other pan eu marketplace
+                        unsellable_location_ept = self.with_context(
+                            unsellable_name_ept=other_marketplace.name).create_unsellable_location()
+                        fba_warehouse = self.get_fba_warehouse(False, False, other_marketplace, unsellable_location_ept,
+                                                               other_marketplace.country_id)
+                        if not instance_exist:
+                            vals = self.prepare_amazon_marketplace_vals(other_marketplace, warehouse_id)
+                            vals.update({'fba_warehouse_id': fba_warehouse.id})
+                            amazon_instance_obj.create(vals)
+                        else:
+                            instance_exist.write({'fba_warehouse_id': fba_warehouse.id})
 
             elif self.amazon_program == 'mci':
                 warehouse_id = self.search_fbm_warehouse(self.seller_id.company_id)
@@ -808,6 +823,9 @@ class AmazonMarketplaceConfig(models.TransientModel):
                                   'is_european_region': self.is_european_region,
                                   'amazon_selling': self.amazon_selling})
         self.seller_id.update_user_groups()
+        # Assign Sales Team in the marketplaces
+        if self.seller_id.instance_ids:
+            self.seller_id.amz_assign_sales_team_in_marketplaces(self.seller_id)
         return True
 
     def create_amazon_marketplace(self):
@@ -915,6 +933,8 @@ class AmazonMarketplaceConfig(models.TransientModel):
                         vals.update({'fba_warehouse_id': fba_warehouse.id})
                         amazon_instance_obj.create(vals)
         elif self.amazon_program == 'efn':
+            if self.efn_marketplace_ids and not self.store_inv_wh_efn:
+                raise UserError(_('Store inventory is required if you select any marketplace other than UK.'))
             if self.seller_id.store_inv_wh_efn and self.seller_id.store_inv_wh_efn.id != self.store_inv_wh_efn.id:
                 raise UserError(_('You can not change the inventory store location, If you want to change '
                                   'it please first inactive the seller and create a new seller.'))
@@ -941,6 +961,20 @@ class AmazonMarketplaceConfig(models.TransientModel):
             if resupply_wh and warehouse_id:
                 warehouse = self.env['stock.warehouse'].browse(warehouse_id)
                 resupply_wh and resupply_wh.write({'resupply_wh_ids': warehouse.ids})
+            if self.other_marketplace_ids:
+                for other_marketplace in self.other_marketplace_ids:
+                    instance_exist = self.seller_id.instance_ids.filtered(lambda x: x.marketplace_id.id == other_marketplace.id)
+                    if not instance_exist:
+                        # Create separate unsellable location for other marketplaces
+                        unsellable_location_ept = self.with_context(
+                            unsellable_name_ept=other_marketplace.name).create_unsellable_location()
+                        fba_warehouse = self.get_fba_warehouse(False, False, other_marketplace, unsellable_location_ept,
+                                                               other_marketplace.country_id)
+                        # if not fba_warehouse.unsellable_location_id:
+                        #     unsellable_location_ept = self.with_context(unsellable_name_ept=other_marketplace.name).create_unsellable_location()
+                        vals = self.prepare_amazon_marketplace_vals(other_marketplace, warehouse_id)
+                        vals.update({'fba_warehouse_id': fba_warehouse.id})
+                        amazon_instance_obj.create(vals)
         elif self.amazon_program == 'mci':
             if not self.store_inv_wh_mci and not 'GB' in self.mci_marketplace_ids.mapped('country_id').mapped('code'):
                 raise UserError(_('Please select at least one Store Inventory Country'))
@@ -1091,6 +1125,9 @@ class AmazonMarketplaceConfig(models.TransientModel):
                 amazon_instance_obj.create(vals)
             self.seller_id.write({'amazon_program': self.amazon_program,
                                   'is_european_region': self.is_european_region})
+        # Assign Sales Team in the marketplaces
+        if self.seller_id.instance_ids:
+            self.seller_id.amz_assign_sales_team_in_marketplaces(self.seller_id)
         action = self.env.ref('amazon_ept.action_amazon_configuration', False)
         result = action.read()[0] if action else {}
         ctx = result.get('context', {}) and eval(result.get('context', {}))

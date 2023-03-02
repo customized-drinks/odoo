@@ -83,7 +83,7 @@
                     </group>
                     <group>
                         <field name="fulfillment_policy" required="1"/>
-                        <field name="is_displayable_date_time_required"/>
+                        <field name="is_displayable_date_time_required" invisible="1"/>
                         <field name="displayable_date_time"
                                attrs="{'required':[('is_displayable_date_time_required','=',True)],'invisible':[('is_displayable_date_time_required','=',False)]}"/>
                     </group>

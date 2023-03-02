@@ -81,12 +81,12 @@ class AmazonLiveStockReportEpt(models.Model):
             record.inventory_count = len(record.inventory_ids.ids)
 
     name = fields.Char(size=256)
-    state = fields.Selection([('draft', 'Draft'), ('_SUBMITTED_', 'SUBMITTED'),
-                              ('_IN_PROGRESS_', 'IN_PROGRESS'), ('_CANCELLED_', 'CANCELLED'),
-                              ('_DONE_', 'DONE'), ('SUBMITTED', 'SUBMITTED'),
-                              ('IN_PROGRESS', 'IN_PROGRESS'), ('CANCELLED', 'CANCELLED'),
-                              ('DONE', 'DONE'), ('FATAL', 'FATAL'), ('IN_QUEUE', 'IN_QUEUE'),
-                              ('_DONE_NO_DATA_', 'DONE_NO_DATA'), ('processed', 'PROCESSED')],
+    state = fields.Selection([('draft', 'Draft'), ('SUBMITTED', 'SUBMITTED'),
+                              ('_SUBMITTED_', 'SUBMITTED'), ('IN_QUEUE', 'IN_QUEUE'),
+                              ('IN_PROGRESS', 'IN_PROGRESS'), ('_IN_PROGRESS_', 'IN_PROGRESS'),
+                              ('DONE', 'DONE'), ('_DONE_', 'DONE'), ('_DONE_NO_DATA_', 'DONE_NO_DATA'),
+                              ('FATAL', 'FATAL'), ('processed', 'PROCESSED'),
+                              ('CANCELLED', 'CANCELLED'), ('_CANCELLED_', 'CANCELLED')],
                              string='Report Status', default='draft',
                              help="This Field relocates state of fba live inventory process.")
     seller_id = fields.Many2one('amazon.seller.ept', string='Seller', copy=False,
@@ -657,6 +657,8 @@ class AmazonLiveStockReportEpt(models.Model):
                 raise UserError(_(response.get('error', {})))
         if response.get('result', {}):
             self.update_report_history(response.get('result', {}))
+            if self.state in ['_DONE_', 'DONE'] and self.report_document_id:
+                self.get_report()
         return True
 
     def get_report(self):
@@ -925,12 +927,6 @@ class AmazonLiveStockReportEpt(models.Model):
                     inventory_report_id, amazon_warehouse_location, amazon_company)
                 unsellable_inventory = stock_inventory.create(unsellable_inventory_vals)
                 self.start_inventory(unsellable_inventory, seller, job)
-        if not job.log_lines:
-            job.unlink()
-        else:
-            message = 'Inventory adjustment process has been completed open log to view products' \
-                      'which are not processed due to any reason.'
-            job.write({'log_lines': [(0, 0, {'message': message})]})
         return True
 
     def _get_theoretical_qty(self, product, file_qty, location):

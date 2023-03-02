@@ -15,3 +15,4 @@ class AccountBankStatementLine(models.Model):
     _inherit = "account.bank.statement.line"
 
     amazon_code = fields.Char("Amazon Statement Line Code")
+    reimbursement_invoice_id = fields.Many2one('account.move')

@@ -58,8 +58,8 @@ class ActiveProductListingReportEpt(models.Model):
         self.log_count = log_ids.__len__()
 
         # Set the boolean field mismatch_details as True if found mismatch details in log lines
-        if self.env['common.log.lines.ept'].search_count(
-                [('log_book_id', 'in', log_ids), ('mismatch_details', '=', True)]):
+        if self.env['common.log.lines.ept'].search_count([('log_book_id', 'in', log_ids),
+                                                          ('mismatch_details', '=', True)]):
             self.mismatch_details = True
         else:
             self.mismatch_details = False
@@ -90,6 +90,8 @@ class ActiveProductListingReportEpt(models.Model):
     report_document_id = fields.Char(string='Report Document Reference', help='Request Document ID')
     mismatch_details = fields.Boolean(compute='_compute_log_count', string='Mismatch Details',
                                       help='True if found mismatch details in log line')
+    last_sync_line = fields.Integer(string="Last sync line",
+                                    help="Used to identify the last process line of active products listing report.")
 
     def list_of_process_logs(self):
         """
@@ -194,6 +196,8 @@ class ActiveProductListingReportEpt(models.Model):
             raise UserError(_(response.get('error')))
         result = response.get('result', {})
         self.update_report_history(result)
+        if self.state in ['_DONE_', 'DONE'] and self.report_document_id:
+            self.get_report()
         return True
 
     def get_report(self):
@@ -338,17 +342,24 @@ class ActiveProductListingReportEpt(models.Model):
         common_log_line_obj = self.env['common.log.lines.ept']
         log_model_id = common_log_line_obj.get_model_id('active.product.listing.report.ept')
         model_id = common_log_line_obj.get_model_id('product.product')
-        log_rec = log_book_obj.amazon_create_transaction_log('import', log_model_id, self.id)
+        log_rec = log_book_obj.search([('module', '=', 'amazon_ept'),
+                                       ('model_id', '=', log_model_id),
+                                       ('res_id', '=', self.id)], limit=1)
+        if not log_rec:
+            log_rec = log_book_obj.amazon_create_transaction_log('import', log_model_id, self.id)
         imp_file = StringIO(base64.b64decode(self.attachment_id.datas).decode())
         reader = csv.DictReader(imp_file, delimiter='\t')
         price_list_id = self.instance_id.pricelist_id
         # get import file headers name
         headers = reader.fieldnames
+        process_count = 0
         skip_header = self.read_import_file_header(headers, model_id, log_rec, common_log_line_obj)
         if skip_header:
             raise UserError(_("The Header of this report must be in English Language,"
                               " Please contact Emipro Support for further Assistance."))
         for row in reader:
+            if reader.line_num <= self.last_sync_line:
+                continue
             if 'fulfilment-channel' in row.keys():
                 fulfillment_type = self.get_fulfillment_type(row.get('fulfilment-channel', ''))
             else:
@@ -363,8 +374,8 @@ class ActiveProductListingReportEpt(models.Model):
                     ['|', ('active', '=', False), ('active', '=', True), ('seller_sku', '=', seller_sku)], limit=1)
                 odoo_product_id = amazon_product.product_id
             if amazon_product_id:
-                self.create_or_update_amazon_product_ept(
-                    amazon_product_id, amazon_product_id.product_id.id, fulfillment_type, row)
+                self.create_or_update_amazon_product_ept(amazon_product_id, amazon_product_id.product_id.id,
+                                                         fulfillment_type, row)
                 if self.update_price_in_pricelist and row.get('price', False):
                     price_list_id.set_product_price_ept(amazon_product_id.product_id.id, float(row.get('price')))
             else:
@@ -375,7 +386,11 @@ class ActiveProductListingReportEpt(models.Model):
                         message, model_id, False, seller_sku, fulfillment_type, log_rec, mismatch=True)
                     continue
                 self.create_odoo_or_amazon_product_ept(odoo_product_id, fulfillment_type, row, log_rec)
-
+                process_count += 1
+            if process_count >= 100:
+                process_count = 0
+                self.write({'last_sync_line': reader.line_num})
+                self._cr.commit()
         if not log_rec.log_lines:
             log_rec.unlink()
         self.write({'state': 'processed'})

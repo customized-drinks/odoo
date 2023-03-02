@@ -284,12 +284,9 @@ class SaleOrder(models.Model):
         """
         This method will prepare dict for outbound orders.
         """
-        data = {}
-        data.update({
-            'sellerFulfillmentOrderId': self.name,
-            'displayableOrderId': self.amz_order_reference,
-            'shippingSpeedCategory': self.amz_shipment_service_level_category,
-        })
+        data = {'marketplaceId': self.amz_instance_id.market_place_id, 'sellerFulfillmentOrderId': self.name,
+                'displayableOrderId': self.amz_order_reference,
+                'shippingSpeedCategory': self.amz_shipment_service_level_category}
         if self.amz_delivery_start_time and self.amz_delivery_end_time:
             start_date = self.amz_delivery_start_time.strftime("%Y-%m-%dT%H:%M:%S")
             start_date = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(
@@ -300,51 +297,53 @@ class SaleOrder(models.Model):
             end_date = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(
                 time.mktime(time.strptime(end_date, "%Y-%m-%dT%H:%M:%S"))))
             end_date = str(end_date) + 'Z'
-            data.update({
-                'deliveryWindow.startDate': start_date,
-                'deliveryWindow.endDate': end_date,
-            })
+            data.update({'deliveryWindow': {'startDate': start_date,
+                                            'endDate': end_date}})
 
-        data.update({
-            'destinationAddress.name': str(self.partner_shipping_id.name),
-            'destinationAddress.addressLine1': str(self.partner_shipping_id.street or ''),
-            'destinationAddress.addressLine2': str(self.partner_shipping_id.street2 or ''),
-            'destinationAddress.countryCode': str(self.partner_shipping_id.country_id.code or ''),
-            'destinationAddress.city': str(self.partner_shipping_id.city or ''),
-            'destinationAddress.stateOrRegion': str(self.partner_shipping_id.state_id and
-                                                    self.partner_shipping_id.state_id.code or ''),
-            'destinationAddress.postalCode': str(self.partner_shipping_id.zip or ''),
-        })
+        data.update({'destinationAddress': {'name': str(self.partner_shipping_id.name),
+                                            'addressLine1': str(self.partner_shipping_id.street or ''),
+                                            'addressLine2': str(self.partner_shipping_id.street2 or ''),
+                                            'countryCode': str(self.partner_shipping_id.country_id.code or ''),
+                                            'city': str(self.partner_shipping_id.city or ''),
+                                            'phone': str(self.partner_shipping_id.mobile or
+                                                         self.partner_shipping_id.phone or ''),
+                                            'stateOrRegion': str(self.partner_shipping_id.state_id and
+                                                                 self.partner_shipping_id.state_id.code or ''),
+                                            'postalCode': str(self.partner_shipping_id.zip or '')}})
+
+        displayable_date = self.amz_displayable_date_time.strftime("%Y-%m-%dT%H:%M:%S")
+        displayable_date = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(
+            time.mktime(time.strptime(displayable_date, "%Y-%m-%dT%H:%M:%S"))))
+        displayable_date = str(displayable_date) + 'Z'
+
         if self.note:
             data.update({'displayableOrderComment': str(self.note)})
         data.update({
-            'displayableOrderDate': str(self.amz_displayable_date_time.strftime('%Y-%m-%d')),
+            'displayableOrderDate': displayable_date,
             'fulfillmentAction': str(self.amz_fulfillment_action),
 
         })
-        count = 1
+        item_list = []
         for line in self.order_line:
-            if line.product_id and line.product_id.type == 'service':
+            if line.product_id and line.product_id.type == 'service' or line.warehouse_id_ept.id not in \
+                    [False, self.warehouse_id.id]:
                 continue
 
-            key = "items.member.%s.quantity" % (count)
-            data.update({key: str(int(line.product_uom_qty))})
-            key = "items.member.%s.sellerSku" % (count)
-            data.update({key: str(line.amazon_product_id.seller_sku)})
-            key = "items.member.%s.sellerFulfillmentOrderItemId" % (count)
-            data.update({key: str(line.amazon_product_id.seller_sku)})
-            key = "items.member.%s.perUnitDeclaredValue.currencyCode" % count
-            data.update({key: str(line.order_id.currency_id.name)})
-            key = "items.member.%s.perUnitDeclaredValue.value" % count
-            data.update({key: str(line.price_unit)})
-            count = count + 1
+            item_list.append({'sellerSku': str(line.amazon_product_id.seller_sku),
+                              'sellerFulfillmentOrderItemId': str(line.amazon_product_id.seller_sku),
+                              'quantity': str(int(line.product_uom_qty)),
+                              'perUnitDeclaredValue': {'currencyCode': str(line.order_id.currency_id.name),
+                                                       'value': str(line.price_unit)}
+                              })
+        if item_list:
+            data.update({'items': item_list})
+        email_list = []
         if self.notify_by_email:
-            count = 1
             for follower in self.message_follower_ids:
                 if follower.partner_id.email:
-                    key = "notificationEmails.member.%s" % (count)
-                    data.update({key: str(follower.partner_id.email)})
-                    count = count + 1
+                    email_list.append(str(follower.partner_id.email))
+        if email_list:
+            data.update({'notificationEmails': email_list})
         return data
 
     def import_fba_pending_sales_order(self, seller, marketplaceids, updated_after_date):
@@ -1369,8 +1368,13 @@ class SaleOrder(models.Model):
                 raise UserError(_(response.get('error', {})))
 
             list_of_shipped_order_lines = response.get('result', [])
-            self.process_shipped_or_missing_unshipped_lines_ept(instance, order,
-                                                                line, list_of_shipped_order_lines, log_book)
+            try:
+                self.process_shipped_or_missing_unshipped_lines_ept(instance, order, line,
+                                                                    list_of_shipped_order_lines, log_book)
+            except Exception as ex:
+                common_log_line_ept.amazon_create_order_log_line(str(ex), model_id, False,
+                                                                 amazon_order_ref, False, 'FBM', log_book)
+                line.state = 'failed'
             self._cr.commit()
         return True
 
@@ -1553,6 +1557,7 @@ class SaleOrder(models.Model):
         :param end_date: until this date get the orders.
         :return: True
         """
+        data_queue_list = []
         shipped_order_data_queue_obj = self.env['shipped.order.data.queue.ept']
         instance_dict = {}
         if not instance:
@@ -1578,11 +1583,12 @@ class SaleOrder(models.Model):
         result = self.get_fbm_orders(seller, marketplaceids, orderstatus, updated_after_date)
         next_token = result.get('NextToken', '')
         data_queue = shipped_order_data_queue_obj.create({'amz_seller_id': seller.id})
+        data_queue_list.append(data_queue.id)
         datas = result.get('Orders', [])
         if not isinstance(datas, list) and datas:
             datas = [datas]
         if not datas:
-            return True
+            return False
         self.create_shipped_or_missing_unshipped_queue(datas, instance_dict, seller, data_queue)
         self._cr.commit()
         if data_queue.shipped_order_data_queue_lines:
@@ -1604,9 +1610,10 @@ class SaleOrder(models.Model):
                 for data in result:
                     datas = data.get('Orders', [])
                     data_queue = shipped_order_data_queue_obj.create({'amz_seller_id': seller.id})
+                    data_queue_list.append(data_queue.id)
                     self.create_shipped_or_missing_unshipped_queue(datas, instance_dict, seller, data_queue)
                     self._cr.commit()
-        return True
+        return data_queue_list
 
     @staticmethod
     def prepare_sale_order_update_values(instance, order):
@@ -1884,12 +1891,12 @@ class SaleOrder(models.Model):
                     continue
                 fulfillment_date_concat = self.get_shipment_fulfillment_date(picking)
                 shipment_pickings.append(picking.id)
-                manage_multi_tracking_number_in_delivery_order = False if picking.carrier_tracking_ref else True
-                if not manage_multi_tracking_number_in_delivery_order:
+                multi_tracking = True if picking.mapped('package_ids').filtered(lambda l: l.tracking_no) else False
+                if picking.carrier_tracking_ref and not multi_tracking:
                     ship_info = ''
                     carrier_name = self.amz_get_carrier_name_ept(picking)
                     tracking_no = picking.carrier_tracking_ref
-                    carrier_code = picking.carrier_id.amz_carrier_code if picking.carrier_id else ''
+                    carrier_code = self.amz_get_carrier_code_ept(picking)
                     parcel = self.amz_prepare_parcel_values_ept(carrier_name, tracking_no, amazon_order,
                                                                 fulfillment_date_concat, carrier_code)
                     partner = amazon_order.warehouse_id.partner_id
@@ -1948,7 +1955,7 @@ class SaleOrder(models.Model):
         """
         fulfillment_date_concat = self.get_shipment_fulfillment_date(picking)
         carrier_name = self.amz_get_carrier_name_ept(picking)
-        carrier_code = picking.carrier_id.amz_carrier_code if picking.carrier_id else ''
+        carrier_code = self.amz_get_carrier_code_ept(picking)
         for move in picking.move_lines:
             if move in update_move_ids or move.sale_line_id.product_id.id != move.product_id.id:
                 continue
@@ -2027,6 +2034,19 @@ class SaleOrder(models.Model):
             carrier_name = carrier.name
         return carrier_name
 
+    @staticmethod
+    def amz_get_carrier_code_ept(picking):
+        """
+        Define method for get amazon carrier code from picking
+        :param picking : stock.picking()
+        : return: string
+        """
+        if picking.carrier_id and picking.carrier_id.amz_carrier_code:
+            carrier_code = picking.carrier_id.amz_carrier_code
+        else:
+            carrier_code = 'Other'
+        return carrier_code
+
     def amz_prepare_phantom_product_dict_ept(self, picking_ids):
         """
         Prepare phantom product dictionary from picking ids
@@ -2078,7 +2098,7 @@ class SaleOrder(models.Model):
                 if tracking_no:
                     update_move_ids += moves.ids
                     product_qty = self.amz_get_sale_line_product_qty_ept(sale_line_id)
-                    carrier_code = picking.carrier_id.amz_carrier_code if picking.carrier_id else ''
+                    carrier_code = self.amz_get_carrier_code_ept(picking)
                     carrier_name = self.amz_get_carrier_name_ept(picking)
                     parcel = self.amz_prepare_parcel_values_ept(carrier_name, tracking_no, order,
                                                                 fulfillment_date_concat, carrier_code)
@@ -2313,7 +2333,7 @@ class SaleOrder(models.Model):
         orders = self
         if active_ids:
             orders = self.search([('id', 'in', active_ids), ('amz_is_outbound_order', '=', True),
-                                  ('state', '=', 'sale'), ('exported_in_amazon', '=', False)])
+                                  ('state', 'in', ['sale', 'done']), ('exported_in_amazon', '=', False)])
         if orders:
             filtered_orders = orders.filtered(lambda x: x.amz_instance_id.fba_warehouse_id)
             for order in filtered_orders:
@@ -2323,8 +2343,8 @@ class SaleOrder(models.Model):
                 _logger.info("Requesting to create fulfillment for Order %s." % order.name)
                 data = order.get_data()
                 kwargs = self.prepare_amz_outbound_order_kwargs()
-                kwargs.update({'emipro_api': 'auto_create_outbound_order_v14', 'data': data})
-                response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT, params=kwargs, timeout=1000)
+                kwargs.update({'emipro_api': 'auto_create_outbound_order_sp_api', 'data': data})
+                response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT + '/iap_request', params=kwargs, timeout=1000)
                 self.process_create_outbound_order_response(response, is_auto_process)
 
         return True
@@ -2380,8 +2400,7 @@ class SaleOrder(models.Model):
         dbuuid = ir_config_obj.sudo().get_param('database.uuid')
         return {
             'merchant_id': self.amz_instance_id.merchant_id and str(self.amz_instance_id.merchant_id) or False,
-            'auth_token': self.amz_instance_id.auth_token and str(self.amz_instance_id.auth_token) or False,
-            'app_name': 'amazon_ept',
+            'app_name': 'amazon_ept_spapi',
             'account_token': account.account_token,
             'dbuuid': dbuuid,
             'amazon_marketplace_code':
@@ -2392,11 +2411,11 @@ class SaleOrder(models.Model):
         """
         Processing response of auto create outbound orders.
         """
-        if response.get('reason', False):
+        if response.get('error', False):
             if is_auto_process:
-                self.message_post(body=_(str(response.get('reason', {}))))
+                self.message_post(body=_(str(response.get('error', {}))))
             else:
-                raise UserError(_(response.get('reason', {})))
+                raise UserError(_(response.get('error', {})))
         else:
             self.write({'exported_in_amazon': True})
             self._cr.commit()

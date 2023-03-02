@@ -61,18 +61,13 @@ class AmazonRemovalOrderReportHistory(models.Model):
             record.company_id = company_id
 
     name = fields.Char(size=256, help="This Field relocates removal order report name.")
-    state = fields.Selection([('draft', 'Draft'),
-                              ('_SUBMITTED_', 'SUBMITTED'),
-                              ('_IN_PROGRESS_', 'IN_PROGRESS'),
-                              ('_CANCELLED_', 'CANCELLED'),
-                              ('_DONE_', 'DONE'),
-                              ('partially_processed', 'Partially Processed'),
-                              ('IN_PROGRESS', 'IN_PROGRESS'), ('FATAL', 'FATAL'),
-                              ('CANCELLED', 'CANCELLED'), ('DONE', 'DONE'),
-                              ('IN_QUEUE', 'IN_QUEUE'), ('SUBMITTED', 'SUBMITTED'),
-                              ('_DONE_NO_DATA_', 'DONE_NO_DATA'),
-                              ('processed', 'PROCESSED')],
-                             string='Report Status', default='draft',
+    state = fields.Selection([('draft', 'Draft'), ('SUBMITTED', 'SUBMITTED'),
+                              ('_SUBMITTED_', 'SUBMITTED'), ('IN_QUEUE', 'IN_QUEUE'),
+                              ('IN_PROGRESS', 'IN_PROGRESS'), ('_IN_PROGRESS_', 'IN_PROGRESS'),
+                              ('DONE', 'DONE'), ('_DONE_', 'DONE'), ('_DONE_NO_DATA_', 'DONE_NO_DATA'),
+                              ('FATAL', 'FATAL'), ('partially_processed', 'Partially Processed'),
+                              ('processed', 'PROCESSED'), ('CANCELLED', 'CANCELLED'),
+                              ('_CANCELLED_', 'CANCELLED')], string='Report Status', default='draft',
                              help="This Field relocates state of removal order report process.")
     seller_id = fields.Many2one('amazon.seller.ept', string='Seller', copy=False,
                                 help="Select Seller id from you wanted to get Shipping report")
@@ -287,6 +282,8 @@ class AmazonRemovalOrderReportHistory(models.Model):
             if response.get('result', {}):
                 result = response.get('result', {})
                 self.update_report_history(result)
+                if self.state in ['_DONE_', 'DONE'] and self.report_document_id:
+                    self.get_report()
         return True
 
     def get_report(self):
@@ -389,6 +386,13 @@ class AmazonRemovalOrderReportHistory(models.Model):
         reader = csv.DictReader(imp_file, delimiter='\t')
         disposal_line_dict, return_line_dict, order_dict, liquidations_line_dict = {}, {}, {}, {}
         job = self.amz_removal_search_or_create_job()
+        if not self.seller_id.instance_ids.filtered(lambda l: l.is_allow_to_create_removal_order):
+            if not self._context.get('is_auto_process', False):
+                raise UserError(_("Please Enable Removal order configuration"))
+            else:
+                job.write({'log_lines': [(0, 0, {'message': 'Please Enable Removal order configuration',
+                                                 'mismatch_details': True})]})
+                return False
         for row in reader:
             if not row.get('order-type', '') or row.get('order-type', '') == 'order-type':
                 continue

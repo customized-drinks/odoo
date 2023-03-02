@@ -63,12 +63,12 @@ class ShipmentReportConfigureFulfillmentCenterEPT(models.TransientModel):
                         'seller_id': seller_id.id,
                         'warehouse_id': warehouse_id}
                 amazon_fulfillment_obj.create(vals)
-
         is_fulfillment_center = False
-        fulfillment_center_list = shipment_report_id.get_missing_fulfillment_center(
-            shipment_report_id.attachment_id)
-        if fulfillment_center_list:
-            is_fulfillment_center = True
+        if seller_id.is_fulfilment_center_configured:
+            fulfillment_center_list = shipment_report_id.get_missing_fulfillment_center(
+                shipment_report_id.attachment_id)
+            if fulfillment_center_list:
+                is_fulfillment_center = True
         shipment_report_id.write({'is_fulfillment_center': is_fulfillment_center})
         return True
 

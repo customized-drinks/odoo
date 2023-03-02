@@ -29,7 +29,7 @@
     </record>
 
     <record id="action_wizard_amazon_prepare_product_for_export" model="ir.actions.act_window">
-        <field name="name">Prepare Product For Export In Amazon</field>
+        <field name="name">Amazon - Prepare Product for Export</field>
         <field name="res_model">amazon.prepare.export.product.ept</field>
         <field name="view_mode">form</field>
         <field name="view_id" ref="amazon_prepare_for_export_product_in_amazon_from_view_ept"/>

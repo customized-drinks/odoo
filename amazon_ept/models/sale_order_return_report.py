@@ -66,15 +66,14 @@ class SaleOrderReturnReport(models.Model):
     start_date = fields.Datetime(help="Report Start Date")
     end_date = fields.Datetime(help="Report End Date")
     requested_date = fields.Datetime(default=time.strftime("%Y-%m-%d %H:%M:%S"), help="Report Requested Date")
-    state = fields.Selection([('draft', 'Draft'), ('_SUBMITTED_', 'SUBMITTED'),
-                              ('_IN_PROGRESS_', 'IN_PROGRESS'), ('_CANCELLED_', 'CANCELLED'),
-                              ('_DONE_', 'DONE'), ('IN_PROGRESS', 'IN_PROGRESS'),
-                              ('FATAL', 'FATAL'), ('CANCELLED', 'CANCELLED'), ('DONE', 'DONE'),
-                              ('IN_QUEUE', 'IN_QUEUE'), ('SUBMITTED', 'SUBMITTED'),
-                              ('_DONE_NO_DATA_', 'DONE_NO_DATA'), ('processed', 'PROCESSED'),
-                              ('imported', 'Imported'), ('partially_processed', 'Partially Processed'),
-                              ('closed', 'Closed')], string='Report Status', default='draft',
-                             help="Report Processing States")
+    state = fields.Selection([('draft', 'Draft'), ('SUBMITTED', 'SUBMITTED'),
+                              ('_SUBMITTED_', 'SUBMITTED'), ('IN_QUEUE', 'IN_QUEUE'),
+                              ('IN_PROGRESS', 'IN_PROGRESS'), ('_IN_PROGRESS_', 'IN_PROGRESS'),
+                              ('DONE', 'DONE'), ('_DONE_', 'DONE'), ('_DONE_NO_DATA_', 'DONE_NO_DATA'),
+                              ('imported', 'Imported'), ('FATAL', 'FATAL'),
+                              ('partially_processed', 'Partially Processed'), ('processed', 'PROCESSED'),
+                              ('closed', 'Closed'), ('CANCELLED', 'CANCELLED'), ('_CANCELLED_', 'CANCELLED')],
+                             string='Report Status', default='draft', help="Report Processing States")
     seller_id = fields.Many2one('amazon.seller.ept', string='Seller', copy=False,
                                 help="Select Seller id from you wanted to get Shipping report")
     user_id = fields.Many2one('res.users', string="Requested User",
@@ -316,6 +315,8 @@ class SaleOrderReturnReport(models.Model):
             result = response.get('result', {})
             if result:
                 self.update_report_history(result)
+                if self.state in ['_DONE_', 'DONE'] and self.report_document_id:
+                    self.get_customer_return_report()
         return True
 
     def get_customer_return_report(self):

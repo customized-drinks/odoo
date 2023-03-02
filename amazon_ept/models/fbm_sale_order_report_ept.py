@@ -40,14 +40,14 @@ class FbmSaleOrderReportEpt(models.Model):
                                      help="Report Document id to recognise unique request document reference")
     report_id = fields.Char(size=256, string='Report ID')
     requested_date = fields.Datetime(default=time.strftime("%Y-%m-%d %H:%M:%S"))
-    state = fields.Selection([('draft', 'Draft'), ('_SUBMITTED_', 'SUBMITTED'),
-                              ('_IN_PROGRESS_', 'IN_PROGRESS'), ('_CANCELLED_', 'CANCELLED'), ('_DONE_', 'DONE'),
-                              ('IN_PROGRESS', 'IN_PROGRESS'), ('FATAL', 'FATAL'),
-                              ('CANCELLED', 'CANCELLED'), ('DONE', 'DONE'),
-                              ('IN_QUEUE', 'IN_QUEUE'), ('SUBMITTED', 'SUBMITTED'),
-                              ('_DONE_NO_DATA_', 'DONE_NO_DATA'), ('processed', 'PROCESSED'),
-                              ('imported', 'Imported'), ('partially_processed', 'Partially Processed'),
-                              ('closed', 'Closed')], string='Report Status', default='draft')
+    state = fields.Selection([('draft', 'Draft'), ('SUBMITTED', 'SUBMITTED'),
+                              ('_SUBMITTED_', 'SUBMITTED'), ('IN_QUEUE', 'IN_QUEUE'),
+                              ('IN_PROGRESS', 'IN_PROGRESS'), ('_IN_PROGRESS_', 'IN_PROGRESS'),
+                              ('DONE', 'DONE'), ('_DONE_', 'DONE'), ('imported', 'Imported'),
+                              ('_DONE_NO_DATA_', 'DONE_NO_DATA'), ('FATAL', 'FATAL'),
+                              ('partially_processed', 'Partially Processed'), ('processed', 'PROCESSED'),
+                              ('closed', 'Closed'), ('CANCELLED', 'CANCELLED'),
+                              ('_CANCELLED_', 'CANCELLED')], string='Report Status', default='draft')
     user_id = fields.Many2one('res.users', string="Requested User")
     sales_order_report_ids = fields.One2many('sale.order', 'amz_sales_order_report_id', string="Sale Orders")
     sales_order_count = fields.Integer(compute='_compute_order_count', string='# of Orders')
@@ -76,8 +76,7 @@ class FbmSaleOrderReportEpt(models.Model):
         :return: boolean(True/False)
         """
         if seller and seller.id:
-            report_type = 'GET_FLAT_FILE_ORDER_REPORT_DATA_INVOICING' if seller.is_european_region \
-                else 'GET_FLAT_FILE_ORDER_REPORT_DATA_TAX'
+            report_type = 'GET_FLAT_FILE_ORDER_REPORT_DATA_SHIPPING'
             sale_order_report = self.create({'report_type': report_type,
                                              'seller_id': seller.id, 'state': 'draft',
                                              'requested_date': time.strftime("%Y-%m-%d %H:%M:%S")})
@@ -131,8 +130,7 @@ class FbmSaleOrderReportEpt(models.Model):
         res = super(FbmSaleOrderReportEpt, self).default_get(fields)
         if not fields:
             return res
-        report_type = 'GET_FLAT_FILE_ORDER_REPORT_DATA_INVOICING' if self.seller_id.is_european_region else \
-            'GET_FLAT_FILE_ORDER_REPORT_DATA_TAX'
+        report_type = 'GET_FLAT_FILE_ORDER_REPORT_DATA_SHIPPING'
         res.update({'report_type': report_type})
         return res
 
@@ -231,6 +229,8 @@ class FbmSaleOrderReportEpt(models.Model):
             result = response.get('result', {})
             if result:
                 self.update_report_history(result)
+                if self.state in ['_DONE_', 'DONE'] and self.report_document_id:
+                    self.get_report()
         return True
 
     def get_report(self):
@@ -531,9 +531,8 @@ class FbmSaleOrderReportEpt(models.Model):
                 if order_status == 'Unshipped' and amazon_order_ref not in unshipped_order_list:
                     unshipped_order_list.append(amazon_order_ref)
                     order_data = dict()
-                    if not self.seller_id.is_european_region:
-                        order_data.update({'buyer-name': order.get('BuyerInfo', {}).get('BuyerName'),
-                                           'recipient-name': order.get('ShippingAddress', {}).get('Name')})
+                    order_data.update({'buyer-name': order.get('BuyerInfo', {}).get('BuyerName'),
+                                       'shipping-address': order.get('ShippingAddress', {})})
                     if is_business_order or is_prime_order:
                         order_data.update({'is_business_order': is_business_order,
                                            'is_prime_order': is_prime_order})
@@ -568,7 +567,11 @@ class FbmSaleOrderReportEpt(models.Model):
         buyer_name = row.get('buyer-name', '') if row.get('buyer-name', False) \
             else business_prime_dict.get(amz_ref, {}).get('buyer-name', '')
         recipient_name = row.get('recipient-name') if row.get('recipient-name', False) \
-            else business_prime_dict.get(amz_ref, {}).get('recipient-name', '')
+            else business_prime_dict.get(amz_ref, {}).get('shipping-address', {}).get('Name', '')
+        address1 = row.get('ship-address-1') if row.get('ship-address-1', False) else business_prime_dict.get(
+            amz_ref, {}).get('shipping-address', {}).get('AddressLine1', '')
+        address2 = row.get('ship-address-2') if row.get('ship-address-2', False) else business_prime_dict.get(
+            amz_ref, {}).get('shipping-address', {}).get('AddressLine2', '')
         fbm_order_dict = {
             'order-item-id': row.get('order-item-id', False),
             'purchase-date': row.get('purchase-date', ''),
@@ -584,8 +587,8 @@ class FbmSaleOrderReportEpt(models.Model):
             'shipping-price': row.get('shipping-price', 0.0),
             'shipping-tax': row.get('shipping-tax', 0.0),
             'recipient-name': recipient_name,
-            'ship-address-1': row.get('ship-address-1', ''),
-            'ship-address-2': row.get('ship-address-2', ''),
+            'ship-address-1': address1,
+            'ship-address-2': address2,
             'ship-city': row.get('ship-city', ''),
             'ship-state': row.get('ship-state', ''),
             'ship-postal-code': row.get('ship-postal-code', ''),

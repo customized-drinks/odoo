@@ -72,13 +72,13 @@ class ShippingReportRequestHistory(models.Model):
             self.mismatch_details = False
 
     name = fields.Char(size=256)
-    state = fields.Selection([('draft', 'Draft'), ('_SUBMITTED_', 'SUBMITTED'),
-                              ('_IN_PROGRESS_', 'IN_PROGRESS'), ('_CANCELLED_', 'CANCELLED'),
-                              ('_DONE_', 'DONE'), ('SUBMITTED', 'SUBMITTED'),
-                              ('IN_PROGRESS', 'IN_PROGRESS'), ('CANCELLED', 'CANCELLED'),
-                              ('IN_QUEUE', 'IN_QUEUE'), ('IN_FATAL', 'IN_FATAL'), ('DONE', 'DONE'),
-                              ('partially_processed', 'Partially Processed'), ('_DONE_NO_DATA_', 'DONE_NO_DATA'),
-                              ('processed', 'PROCESSED')], string='Report Status', default='draft',
+    state = fields.Selection([('draft', 'Draft'), ('SUBMITTED', 'SUBMITTED'), ('_SUBMITTED_', 'SUBMITTED'),
+                              ('IN_QUEUE', 'IN_QUEUE'), ('IN_PROGRESS', 'IN_PROGRESS'),
+                              ('_IN_PROGRESS_', 'IN_PROGRESS'), ('IN_FATAL', 'IN_FATAL'),
+                              ('DONE', 'DONE'), ('_DONE_', 'DONE'), ('_DONE_NO_DATA_', 'DONE_NO_DATA'),
+                              ('FATAL', 'FATAL'), ('partially_processed', 'Partially Processed'),
+                              ('processed', 'PROCESSED'), ('CANCELLED', 'CANCELLED'),
+                              ('_CANCELLED_', 'CANCELLED')], string='Report Status', default='draft',
                              help="Report Processing States")
     attachment_id = fields.Many2one('ir.attachment', string="Attachment",
                                     help="Find Shipping report from odoo Attachment")
@@ -147,8 +147,7 @@ class ShippingReportRequestHistory(models.Model):
         res = super(ShippingReportRequestHistory, self).default_get(fields)
         if not fields:
             return res
-        report_type = 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_INVOICING' if self.seller_id.is_european_region else \
-            'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_TAX'
+        report_type = 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_GENERAL'
         res.update({'report_type': report_type, })
         return res
 
@@ -351,6 +350,8 @@ class ShippingReportRequestHistory(models.Model):
             result = response.get('result', {})
             if result:
                 self.update_report_history(result)
+                if self.state in ['_DONE_', 'DONE'] and self.report_document_id:
+                    self.get_report()
         return True
 
     def amz_search_or_create_logs_ept(self, message):
@@ -385,7 +386,9 @@ class ShippingReportRequestHistory(models.Model):
         if self.report_document_id:
             kwargs = self.prepare_amazon_request_report_kwargs(self.seller_id)
             kwargs.update({'emipro_api': 'get_report_document_sp_api', 'reportDocumentId': self.report_document_id,
-                           'report_id': self.report_id, 'amz_report_type': 'shipment_report_spapi'})
+                           'report_id': self.report_id})
+            if not self.report_type == 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_GENERAL':
+                kwargs.update({'amz_report_type': 'shipment_report_spapi'})
             response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT + '/iap_request', params=kwargs, timeout=1000)
             if response.get('error', False):
                 if self._context.get('is_auto_process', False):
@@ -393,21 +396,28 @@ class ShippingReportRequestHistory(models.Model):
                 else:
                     raise UserError(_(response.get('error', {})))
             result = response.get('result', {})
+            if self.report_type == "GET_AMAZON_FULFILLED_SHIPMENTS_DATA_GENERAL":
+                result = result.get('document', '')
+                result = result.encode()
+                result = base64.b64encode(result)
+            else:
+                result = result.encode()
             if result:
                 file_name = "Shipment_report_" + time.strftime("%Y_%m_%d_%H%M%S") + '.csv'
                 attachment = self.env['ir.attachment'].create({
                     'name': file_name,
-                    'datas': result.encode(),
+                    'datas': result,
                     'res_model': 'mail.compose.message',
                     'type': 'binary'
                 })
                 self.message_post(body=_("<b>Shipment Report Downloaded</b>"), attachment_ids=attachment.ids)
                 # Get Missing Fulfillment Center from attachment file
                 # If get missing Fulfillment Center then set true value of field is_fulfillment_center
-                unavailable_fulfillment_center = self.get_missing_fulfillment_center(attachment)
                 is_fulfillment_center = False
-                if unavailable_fulfillment_center:
-                    is_fulfillment_center = True
+                if self.seller_id.is_fulfilment_center_configured:
+                    unavailable_fulfillment_center = self.get_missing_fulfillment_center(attachment)
+                    if unavailable_fulfillment_center:
+                        is_fulfillment_center = True
                 self.write({'attachment_id': attachment.id, 'is_fulfillment_center': is_fulfillment_center})
         return True
 
@@ -455,7 +465,10 @@ class ShippingReportRequestHistory(models.Model):
         sale_order_list = []
         model_id = self.env[IR_MODEL]._get(AMZ_SHIPPING_REPORT_REQUEST_HISTORY).id
         log_rec = self.amz_search_or_create_logs_ept('')
-        imp_file = self.decode_amazon_encrypted_attachments_data(self.attachment_id, log_rec)
+        if self.report_type == 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_GENERAL':
+            imp_file = StringIO(base64.b64decode(self.attachment_id.datas).decode())
+        else:
+            imp_file = self.decode_amazon_encrypted_attachments_data(self.attachment_id, log_rec)
         reader = csv.DictReader(imp_file, delimiter='\t')
         for row in reader:
             instance = self.get_instance_shipment_report_ept(row, instances)
@@ -542,8 +555,10 @@ class ShippingReportRequestHistory(models.Model):
                 self.request_and_process_b2b_order_response_ept(order_details_dict_list, sale_order_list, log_rec)
             else:
                 self.process_fba_shipment_orders(order_details_dict_list, {}, log_rec, sale_order_list)
-        self.write({'state': 'processed'})
-
+        is_partially_processed_report = stock_move_obj.search_count([
+            ('amz_shipment_report_id', '=', self.id), ('state', 'not in', ('done', 'cancel'))])
+        report_state = 'partially_processed' if is_partially_processed_report else 'processed'
+        self.write({'state': report_state})
         if log_rec and not log_rec.log_lines:
             log_rec.unlink()
 
@@ -567,7 +582,7 @@ class ShippingReportRequestHistory(models.Model):
                 message, model_id, self.id, order_ref, False, 'FBA', job, mismatch=True)
             return False
 
-        amazon_order = amazon_order.filtered(lambda x: x.state == "sale")
+        amazon_order = amazon_order.filtered(lambda x: x.state in ['sale', 'done'])
         if not amazon_order:
             message = "Order %s is already updated in ERP." % order_ref
             common_log_line_obj.amazon_create_order_log_line(
@@ -670,7 +685,8 @@ class ShippingReportRequestHistory(models.Model):
             order = self.get_amazon_outbound_order(order_ref, log_book)
             if not order:
                 continue
-            picking = order.picking_ids.filtered(lambda x: x.state not in ['done', 'cancel'])
+            picking = order.picking_ids.filtered(lambda x: x.state not in ['done', 'cancel'] and
+                                                                  x.picking_type_id.warehouse_id.is_fba_warehouse)
             if not picking:
                 continue
             shipment_dict = self.prepare_warehouse_wise_outbound_dict(lines)
@@ -1242,13 +1258,15 @@ class ShippingReportRequestHistory(models.Model):
             if not amazon_order:
                 continue
             # prepare lines as per shipment id
-            picking = amazon_order.picking_ids.filtered(lambda x: x.state not in ['done', 'cancel'])
+            picking = amazon_order.picking_ids.filtered(lambda x: x.state not in ['done', 'cancel'] and
+                                                                  x.picking_type_id.warehouse_id.is_fba_warehouse)
             if not picking:
                 continue
             shipment_dict = self.prepare_outbound_shipment_dict(lines)
             for shipment_id, shipment_lines in shipment_dict.items():
                 prod_dict, track_list, track_num = {}, [], ''
-                picking = amazon_order.picking_ids.filtered(lambda x: x.state not in ['done', 'cancel'])
+                picking = amazon_order.picking_ids.filtered(lambda x: x.state not in ['done', 'cancel'] and
+                                                                  x.picking_type_id.warehouse_id.is_fba_warehouse)
                 if not picking:
                     continue
                 for ship_line in shipment_lines:
@@ -1894,14 +1912,8 @@ class ShippingReportRequestHistory(models.Model):
         :param instance: amazon.instance.ept()
         :return: {}
         """
-        ship_address2 = row.get('ship-address-2', '') if row.get('ship-address-2', '') else ''
-        ship_address3 = row.get('ship-address-3', '') if row.get('ship-address-3', '') else ''
-        street2 = "%s %s" % (ship_address2, ship_address3)
         partner_vals = {
-            'street': row.get('ship-address-1', False),
-            'street2': street2,
             'city': row.get('ship-city', False),
-            'phone': row.get('ship-phone-number', False),
             'email': row.get('buyer-email', False),
             'zip': row.get('ship-postal-code', False),
             'lang': instance.lang_id and instance.lang_id.code,
@@ -1927,41 +1939,12 @@ class ShippingReportRequestHistory(models.Model):
         :return: {}
         """
         res_partner_obj = self.env['res.partner']
-        buyer_name = row.get('buyer-name') if row.get('buyer-name') else f"Amazon-{row.get('amazon-order-id')}"
-        recipient_name = row.get('recipient-name') if row.get('recipient-name') \
-            else f"Amazon-{row.get('amazon-order-id')}"
+        buyer_name = f"Amazon-{row.get('amazon-order-id')}"
         ship_country = country_dict.get(row.get('ship-country', ''))
-        bill_country = country_dict.get(row.get('bill-country', ''))
         if not ship_country:
             ship_country = self.env['res.country'].search(['|', ('code', '=', row.get('ship-country', '')),
                  ('name', '=', row.get('ship-country', ''))], limit=1)
             country_dict.update({row.get('ship-country', ''): ship_country})
-        if not bill_country:
-            bill_country = self.env['res.country'].search(['|', ('code', '=', row.get('bill-country', '')),
-                 ('name', '=', row.get('bill-country', ''))], limit=1)
-        if recipient_name == 'CONFIDENTIAL':
-            partner = res_partner_obj.with_context(is_amazon_partner=True).search( \
-                [('email', '=', row.get('buyer-email', '')), ('name', '=', row.get('buyer-name', '')),
-                 ('country_id', '=', ship_country.id)], limit=1)
-            if not partner:
-                partner_vals = {}
-                if instance.amazon_property_account_payable_id:
-                    partner_vals.update(
-                        {
-                            'property_account_payable_id': instance.amazon_property_account_payable_id.id})
-                if instance.amazon_property_account_receivable_id:
-                    partner_vals.update( \
-                        {'property_account_receivable_id': instance.amazon_property_account_receivable_id.id})
-                partner = res_partner_obj.with_context(tracking_disable=True).create({
-                    'name': buyer_name,
-                    'country_id': ship_country.id,
-                    'type': 'invoice',
-                    'lang': instance.lang_id and instance.lang_id.code,
-                    'is_amz_customer': True,
-                    **partner_vals
-                })
-            return {'invoice_partner': partner.id,
-                    'shipping_partner': partner.id}, country_dict, state_dict
 
         ship_vals = self.prepare_ship_partner_vals(row, instance)
         ship_state = state_dict.get(row.get('ship-state', ''), False)
@@ -1973,65 +1956,24 @@ class ShippingReportRequestHistory(models.Model):
             {'state_id': ship_state and ship_state.id or False,
              'country_id': ship_country and ship_country.id or False})
 
-        bill_vals = self.prepare_bill_partner_vals(row, instance)
-        if bill_country and row.get('bill-state', '') != '--':
-            bill_state = res_partner_obj.create_or_update_state_ept(bill_country.code, row.get('bill-state', ''),
-                                                                    bill_vals.get('zip', ''), bill_country)
-        else:
-            bill_state = ''
-
-        bill_state_id = bill_state and bill_state.id or False
-        ship_state_id = ship_state and ship_state.id or False
-        bill_country_id = bill_country and bill_country.id or False
-        ship_country_id = ship_country and ship_country.id or False
-        bill_vals.update({'country_id': bill_country_id, 'state_id': bill_state_id})
-        buyers_name = row.get('buyer-name') if row.get('buyer-name') else f"Amazon-{row.get('amazon-order-id')}"
-
-        street2 = ship_vals.get('street2', False)
         partner = res_partner_obj.with_context(is_amazon_partner=True).search(
-            [('email', '=', row.get('buyer-email', '')), '|', ('company_id', '=', False),
+            [('email', '=', row.get('buyer-email', '')), ('state_id', '=', ship_vals.get('state_id')),
+             ('country_id', '=', ship_vals.get('country_id')), ('city', '=', ship_vals.get('city')),
+             ('zip', '=', ship_vals.get('zip')), '|', ('company_id', '=', False),
              ('company_id', '=', instance.company_id.id)], limit=1)
         if not partner:
-            partnervals = {'name': buyer_name, 'type': 'invoice', **bill_vals}
+            partnervals = {'name': buyer_name, 'type': 'invoice', **ship_vals}
             partner = res_partner_obj.create(partnervals)
             partner_dict.update({'invoice_partner': partner.id})
-            invoice_partner = partner
-        elif (buyer_name and partner.name != buyer_name):
-            partner.is_company = True
-            invoice_partner = res_partner_obj.with_context(tracking_disable=True).create({
-                'parent_id': partner.id,
-                'name': buyer_name,
-                'type': 'invoice',
-                **bill_vals
-            })
+            delivery_partner = partner
+        elif partner and row.get('amazon-order-id') not in partner.name.replace('Amazon-', '').split(','):
+            partner.write({'name': f"{partner.name},{row.get('amazon-order-id')}"})
+            delivery_partner = partner
         else:
-            invoice_partner = partner
+            delivery_partner = partner
 
-        delivery = False
-        if bill_state_id == ship_state_id and bill_country_id == ship_country_id and \
-                row.get('bill-postal-code', '') == row.get('ship-postal-code', '') and \
-                row.get('bill-city', '') == row.get('ship-city', '') and buyers_name == recipient_name:
-            delivery = invoice_partner
-
-        if not delivery:
-            delivery = res_partner_obj.with_context(is_amazon_partner=True).search( \
-                [('name', '=', recipient_name), ('street', '=', ship_vals.get('street', '')),
-                 '|', ('street2', '=', False), ('street2', '=', street2),
-                 ('zip', '=', ship_vals.get('zip', '')),
-                 ('city', '=', ship_vals.get('city', '')),
-                 ('country_id', '=', ship_vals.get('country_id', False)),
-                 ('state_id', '=', ship_vals.get('state_id', False)),
-                 '|', ('company_id', '=', False), ('company_id', '=', instance.company_id.id)],
-                limit=1)
-            if not delivery:
-                invoice_partner.is_company = True
-                delivery = res_partner_obj.with_context(tracking_disable=True).create({
-                    'name': recipient_name,
-                    'type': 'delivery',
-                    'parent_id': invoice_partner.id,
-                    'is_amz_customer': True,
-                    **ship_vals, })
-        return {'invoice_partner': invoice_partner.id, 'shipping_partner': delivery.id}, country_dict, state_dict
+        return {'invoice_partner': delivery_partner.id,
+                'shipping_partner': delivery_partner.id}, country_dict, state_dict
 
     @staticmethod
     def prepare_bill_partner_vals(row, instance):
@@ -2220,8 +2162,7 @@ class ShippingReportRequestHistory(models.Model):
             start_date = start_date + timedelta(days=seller.shipping_report_days * -1 or -3)
             end_date = datetime.now()
 
-            report_type = 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_INVOICING' if seller.is_european_region else \
-                'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_TAX'
+            report_type = 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_GENERAL'
             if not seller.is_another_soft_create_fba_shipment:
                 if not self.search([('start_date', '=', start_date),
                                     ('end_date', '=', end_date),
@@ -2240,6 +2181,7 @@ class ShippingReportRequestHistory(models.Model):
                 date_end = end_date.strftime("%Y-%m-%dT%H:%M:%SZ")
                 list_of_wrapper = self.get_reports_from_other_softwares(seller, report_type,
                                                                         date_start, date_end)
+                list_of_wrapper = list_of_wrapper.get('reports', {}) if list_of_wrapper else []
                 for report in list_of_wrapper:
                     report_id = report.get('reportId', '')
                     request_id = report.get('reportDocumentId', '')
@@ -2274,11 +2216,13 @@ class ShippingReportRequestHistory(models.Model):
             seller = self.env['amazon.seller.ept'].browse(seller_id)
             ship_reports = self.search([('seller_id', '=', seller.id),
                                         ('state', 'in', ['_SUBMITTED_', '_IN_PROGRESS_', '_DONE_',
-                                                         'SUBMITTED', 'IN_PROGRESS', 'DONE', 'IN_QUEUE'])])
+                                                         'SUBMITTED', 'IN_PROGRESS', 'DONE',
+                                                         'IN_QUEUE', 'partially_processed'])])
             for report in ship_reports:
-                if report.state not in ['_DONE_', 'DONE']:
+                if report.state not in ['_DONE_', 'DONE', 'partially_processed']:
                     report.get_report_request_list()
-                if report.report_id and report.state in  ['_DONE_', 'DONE'] and not report.attachment_id:
+                if report.report_id and report.state in ['_DONE_', 'DONE', 'partially_processed'] \
+                        and not report.attachment_id:
                     report.with_context(is_auto_process=True).get_report()
                 if report.attachment_id:
                     report.with_context(is_auto_process=True).process_shipment_file()
@@ -2314,7 +2258,10 @@ class ShippingReportRequestHistory(models.Model):
         """
         fulfillment_center_obj = self.env['amazon.fulfillment.center']
         unavailable_fulfillment_center = []
-        imp_file = self.decode_amazon_encrypted_attachments_data(attachment_id, False)
+        if self.report_type == 'GET_AMAZON_FULFILLED_SHIPMENTS_DATA_GENERAL':
+            imp_file = StringIO(base64.b64decode(attachment_id.datas).decode())
+        else:
+            imp_file = self.decode_amazon_encrypted_attachments_data(attachment_id, False)
         reader = csv.DictReader(imp_file, delimiter='\t')
         fulfillment_centers = [row.get('fulfillment-center-id') for row in reader]
         fulfillment_center_list = fulfillment_centers and list(set(fulfillment_centers))

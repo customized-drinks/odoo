@@ -50,11 +50,11 @@ class RatingReportHistory(models.Model):
 
     name = fields.Char(size=256)
     state = fields.Selection(
-        [('draft', 'Draft'), ('_SUBMITTED_', 'SUBMITTED'), ('_IN_PROGRESS_', 'IN_PROGRESS'),
-         ('_CANCELLED_', 'CANCELLED'), ('_DONE_', 'Report Received'), ('IN_PROGRESS', 'IN_PROGRESS'),
-         ('FATAL', 'FATAL'), ('CANCELLED', 'CANCELLED'), ('DONE', 'DONE'),
-         ('IN_QUEUE', 'IN_QUEUE'), ('SUBMITTED', 'SUBMITTED'),
-         ('_DONE_NO_DATA_', 'DONE_NO_DATA'), ('processed', 'PROCESSED')],
+        [('draft', 'Draft'), ('SUBMITTED', 'SUBMITTED'), ('_SUBMITTED_', 'SUBMITTED'),
+         ('IN_QUEUE', 'IN_QUEUE'), ('IN_PROGRESS', 'IN_PROGRESS'),
+         ('_IN_PROGRESS_', 'IN_PROGRESS'), ('DONE', 'DONE'), ('_DONE_', 'Report Received'),
+         ('_DONE_NO_DATA_', 'DONE_NO_DATA'), ('FATAL', 'FATAL'),
+         ('processed', 'PROCESSED'),  ('CANCELLED', 'CANCELLED'), ('_CANCELLED_', 'CANCELLED')],
         string='Report Status', default='draft')
     seller_id = fields.Many2one('amazon.seller.ept', string='Seller', copy=False,
                                 help="Select Seller id from you wanted to get Rating Report.")
@@ -313,6 +313,8 @@ class RatingReportHistory(models.Model):
                     raise UserError(_(response.get('error', {})))
             if response.get('result', {}):
                 self.update_report_history(response.get('result', {}))
+                if self.state in ['_DONE_', 'DONE'] and self.report_document_id:
+                    self.get_report()
         return True
 
     def update_report_history(self, request_result):

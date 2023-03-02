@@ -25,6 +25,14 @@ TYPE2JOURNAL = {
     'in_receipt': 'Purchase Receipt'
 }
 
+LAST_SYNC_FIELDS = ['removal_order_report_last_sync_on', 'shipping_report_last_sync_on',
+                    'inventory_report_last_sync_on', 'settlement_report_last_sync_on',
+                    'fba_recommended_removal_report_last_sync_on', 'fba_order_last_sync_on',
+                    'fba_pending_order_last_sync_on', 'return_report_last_sync_on',
+                    'last_inbound_shipment_status_sync', 'vcs_report_last_sync_on', 'inventory_last_sync_on',
+                    'rating_report_last_sync_on', 'stock_adjustment_report_last_sync_on', 'order_last_sync_on',
+                    'update_shipment_last_sync_on']
+
 AMAZON_INSTANCE_EPT = 'amazon.instance.ept'
 
 
@@ -36,6 +44,7 @@ class AmazonSellerEpt(models.Model):
            False and return so process not raise any warning like external id was not found
     """
     _name = 'amazon.seller.ept'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Amazon Seller Details'
 
     @api.model
@@ -279,7 +288,7 @@ class AmazonSellerEpt(models.Model):
     is_fulfilment_center_configured = fields.Boolean(string='Are Fulfillment Centers Required to Import FBA Orders?',
                                                      help='If True, then Orders will not be imported if the fulfillment'
                                                           ' center is not configured in an appropriate warehouse.',
-                                                     default=True)
+                                                     default=False)
     amz_auto_import_shipped_orders = fields.Boolean(string="Auto Import Shipped Orders?",
                                                     help="If checked, then system auto import shipped "
                                                          "orders from amazon", default=False)
@@ -292,6 +301,42 @@ class AmazonSellerEpt(models.Model):
                                                      help="This will allow to create outbound order when order is "
                                                           "confirmed.")
     default_outbound_instance = fields.Many2one(AMAZON_INSTANCE_EPT, string='Default Instance for Outbound Orders')
+
+    def write(self, vals):
+        """
+        This method is Overridden with super call
+        to make a Logger Note about the changes that user have made in the current model
+        :return super()
+        """
+        for seller in self:
+            msg = ""
+            new = seller.new(vals)
+            for key, value in vals.items():
+                if getattr(seller, key) != getattr(new, key):
+                    if isinstance(getattr(seller, key), models.BaseModel) and \
+                            getattr(seller, key).ids == getattr(new, key).ids:
+                        continue
+                    if self.amz_check_last_sync_field(key):
+                        continue
+                    msg += "<li><b>%s:  </b> %s  ->  %s</li>" % \
+                           (seller._fields.get(key).string,
+                            seller.env['ir.qweb']._get_field(seller, key, '', '', {}, {}, {})[1],
+                            seller.env['ir.qweb']._get_field(new, key, '', '', {}, {}, {})[1])
+            if msg and msg != "":
+                seller.message_post(body=msg)
+        return super(AmazonSellerEpt, self).write(vals)
+
+    @staticmethod
+    def amz_check_last_sync_field(key):
+        """
+        Define this method for skip to creating a tracking log note for the last sync fields of the Amazon schedulers
+        for the amazon sellers.
+        :param: key : str (field name)
+        :return: boolean (TRUE/FALSE)
+        """
+        if str(key) in LAST_SYNC_FIELDS:
+            return True
+        return False
 
     def deactivate_fba_warehouse(self):
         for seller in self:
@@ -445,6 +490,21 @@ class AmazonSellerEpt(models.Model):
         self.active = True
         self._cr.commit()
         self.request_fba_fulfilment_centers([self.id])
+
+    def amz_assign_sales_team_in_marketplaces(self, amazon_seller):
+        """
+        Define this method for set amazon seller sales team in the marketplaces.
+        :param: amazon_seller: amazon.seller.ept()
+        :return: boolean
+        """
+        crm_team_obj = self.env['crm.team']
+        team_name = "Amazon-" + amazon_seller.name
+        amz_sales_team = crm_team_obj.search([('name', '=', team_name)], limit=1)
+        if amz_sales_team:
+            for amazon_marketplace in amazon_seller.instance_ids:
+                if not amazon_marketplace.team_id:
+                    amazon_marketplace.write({'team_id': amz_sales_team.id})
+        return True
 
     def list_of_seller_cron(self):
         seller_cron = self.env['ir.cron'].sudo().search([('amazon_seller_cron_id', '=', self.id)])
@@ -790,13 +850,14 @@ class AmazonSellerEpt(models.Model):
         marketplace_list = ['A2Q3Y263D00KWC', 'A2EUQ1WTGCTBG2', 'A1AM78C64UM0Y8', 'ATVPDKIKX0DER', 'A2VIGQ35RCS4UG',
                             'A1PA6795UKMFR9', 'ARBP9OOSHTCHU', 'A1RKKUPIHCS9HS', 'A13V1IB3VIYZZH', 'A1F83G8C2ARO7P',
                             'A21TJRUUN4KGV', 'APJ6JRA9NG5V4', 'A33AVAJ2PDY3EV', 'A19VAU5U5O7RUS', 'A39IBJ37TRP1C6',
-                            'A1VC38T7YXB528', 'A17E79C6D8DWNP', 'A1805IZSGTT6HS', 'A2NODRKZP88ZB9', 'A1C3SOZRARQ6R3']
+                            'A1VC38T7YXB528', 'A17E79C6D8DWNP', 'A1805IZSGTT6HS', 'A2NODRKZP88ZB9', 'A1C3SOZRARQ6R3',
+                            'AMEN7PMS3EDWL']
         marketplace_obj = self.env['amazon.marketplace.ept']
         kwargs = self.prepare_marketplace_kwargs()
 
         response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT + '/iap_request', params=kwargs, timeout=1000)
-        if response.get('error', False):
-            raise UserError(_(response.get('error', {})))
+        if response.get('error', False) or response.get('reason', False):
+            raise UserError(_(response.get('error', {}) or response.get('reason', {})))
         values = response.get('result', {})
         for value in values:
             participation_dict = value.get('participation', {})
@@ -1087,6 +1148,27 @@ class AmazonSellerEpt(models.Model):
             raise UserError(_(message))
         self.write({'is_sp_api_amz_seller': True})
 
+    def re_authorisation_to_sp_api(self):
+        """
+        Request to re-authorization of seller into the SP API.
+        :return: User warning
+        """
+        amz_marketplace_code = self.country_id.amazon_marketplace_code or self.country_id.code
+        if amz_marketplace_code.upper() == 'GB':
+            amz_marketplace_code = 'UK'
+        kwargs = {'merchant_id': self.merchant_id if self.merchant_id else False,
+                  'amazon_marketplace_code': amz_marketplace_code}
+        response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT + '/sp_api_re_authorisation', params=kwargs, timeout=1000)
+        if response.get('error', {}):
+            user_message = response.get('error', {})
+        elif response.get('result', {}):
+            user_message = ("An email has been sent to you at %s."
+                            " Please click on the Authenticate SP-API button to complete the re-authorization process." %
+                            response.get('result', {}).get('email', ''))
+        else:
+            user_message = 'There is no need to reauthorize your SP API credential at the moment.'
+        raise UserError(_(user_message))
+
     @api.model
     def auto_sync_amazon_fulfillment_center_ept(self):
         """
@@ -1110,7 +1192,8 @@ class AmazonSellerEpt(models.Model):
         if not sellers:
             return False
 
-        sellers = sellers.filtered(lambda l: l.is_fulfilment_center_configured)
+        if not self._context.get('for_stock_adjustment', False):
+            sellers = sellers.filtered(lambda l: l.is_fulfilment_center_configured)
         fba_warehouses = sellers.amz_warehouse_ids.filtered(lambda l: l.is_fba_warehouse)
         sellers.check_fba_warehouse_partner_and_country_configured()
         country_code = fba_warehouses.mapped('partner_id').mapped('country_id').mapped('code')

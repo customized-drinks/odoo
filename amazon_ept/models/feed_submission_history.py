@@ -7,8 +7,8 @@ Added class to store feed history and auto process to update tracking number fee
 
 import logging
 import time
-import ast
 
+from .utils import xml2dict
 from odoo import models, fields, _
 from odoo.addons.iap.tools import iap_tools
 from odoo.exceptions import UserError
@@ -91,26 +91,22 @@ class FeedSubmissionHistory(models.Model):
         This method will update tracking number in amazon via scheduler.
         :return: boolean(TRUE/FALSE)
         """
-        # sale_order_obj = self.env['sale.order']
         stock_picking_obj = self.env['stock.picking']
         feeds = self.search([('feed_type', '=', 'update_tracking_number'), ('feed_result', '=', False)], limit=2)
         for feed in feeds:
             response = feed.with_context(auto_process=True).get_feed_submission_result()
             if response:
-                response = ast.literal_eval(response)
-                is_error = False if response.get('errors', False) is None else True
-                feed_status = response.get('payload', {}).get('processingStatus', '')
-                if not is_error and feed_status == 'DONE':
-                    stock_picking_obj.search([('feed_submission_id', '=', feed.id)]).write({'updated_in_amazon': True})
+                xml_to_dict_obj = xml2dict()
+                result = xml_to_dict_obj.fromstring(response)
+                messages_error = result.get('AmazonEnvelope', {}).get('Message', {}).get(
+                    'ProcessingReport', {}).get('ProcessingSummary', {}).get(
+                    'MessagesWithError', {}).get('value', '')
+                messages_warning = result.get('AmazonEnvelope', {}).get('Message', {}).get(
+                    'ProcessingReport', {}).get('ProcessingSummary', {}).get(
+                    'MessagesWithWarning', {}).get('value', '')
+                if messages_error and messages_warning == '0':
+                    stock_picking_obj.search([('feed_submission_id', '=', feed.id)]).write(
+                        {'updated_in_amazon': True})
                 else:
                     feed.write({'feed_result': False})
-                # else:
-                #     marketplaceids = feed.seller_id.instance_ids.mapped(\
-                #         lambda l: l.marketplace_id.market_place_id)
-                #     if not marketplaceids:
-                #         _logger.debug("There is no any instance is configured of seller %s" % (\
-                #             feed.seller_id.name))
-                    #     continue
-                    # self.amazon = sale_order_obj.check_already_status_updated_in_amazon(\
-                    #     feed.seller_id, marketplaceids, feed.seller_id.instance_ids)
         return True

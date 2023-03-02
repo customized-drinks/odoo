@@ -95,14 +95,14 @@ class SettlementReportEpt(models.Model):
     report_document_id = fields.Char(string='Report Document ID',
                                      help="Report Document id to recognise unique request document reference")
     requested_date = fields.Datetime('Requested Date', default=time.strftime("%Y-%m-%d %H:%M:%S"))
-    state = fields.Selection([('draft', 'Draft'), ('_SUBMITTED_', 'SUBMITTED'),
-                              ('_IN_PROGRESS_', 'IN_PROGRESS'), ('_CANCELLED_', 'CANCELLED'),
-                              ('_DONE_', 'DONE'), ('IN_PROGRESS', 'IN_PROGRESS'),
-                              ('FATAL', 'FATAL'), ('CANCELLED', 'CANCELLED'), ('DONE', 'DONE'),
-                              ('IN_QUEUE', 'IN_QUEUE'), ('SUBMITTED', 'SUBMITTED'),
-                              ('_DONE_NO_DATA_', 'DONE_NO_DATA'), ('processed', 'PROCESSED'),
-                              ('imported', 'Imported'), ('duplicate', 'Duplicate'),
-                              ('partially_processed', 'Partially Processed'), ('confirm', 'Validated')],
+    state = fields.Selection([('draft', 'Draft'), ('SUBMITTED', 'SUBMITTED'),
+                              ('_SUBMITTED_', 'SUBMITTED'), ('IN_QUEUE', 'IN_QUEUE'),
+                              ('IN_PROGRESS', 'IN_PROGRESS'), ('_IN_PROGRESS_', 'IN_PROGRESS'),
+                              ('_DONE_', 'DONE'), ('DONE', 'DONE'), ('imported', 'Imported'),
+                              ('_DONE_NO_DATA_', 'DONE_NO_DATA'), ('FATAL', 'FATAL'),
+                              ('partially_processed', 'Partially Processed'), ('processed', 'PROCESSED'),
+                              ('duplicate', 'Duplicate'), ('confirm', 'Validated'),
+                              ('CANCELLED', 'CANCELLED'), ('_CANCELLED_', 'CANCELLED')],
                              string='Report Status', default='draft')
     is_fees = fields.Boolean(string="Is Fee", compute='_compute_is_fee', store=False)
     all_lines_reconciled = fields.Boolean(string="Is All Lines Reconciled?",
@@ -187,7 +187,7 @@ class SettlementReportEpt(models.Model):
                 refund_name_list.append(refund_name.split("/")[-1])
             else:
                 refund_name_list.append(refund_name.replace('Refund_', ''))
-        if not order_names and not refund_names:
+        if not order_names or not refund_names:
             return True
 
         imp_file = StringIO(base64.b64decode(self.attachment_id.datas).decode())
@@ -280,10 +280,14 @@ class SettlementReportEpt(models.Model):
                     lambda l, reimbursement_invoice_amount=reimbursement_invoice_amount: round(l.amount_total, 10) == round(reimbursement_invoice_amount, 10))
                 reimbursement_invoice = reimbursement_invoice[0] if reimbursement_invoice else False
             if not reimbursement_invoice:
+                reimbursement_invoice = line.reimbursement_invoice_id if line.reimbursement_invoice_id \
+                                                                         and line.reimbursement_invoice_id.state in ['draft', 'posted'] else False
+            if not reimbursement_invoice:
                 reimbursement_invoice = self.create_amazon_reimbursement_invoice(bank_statement, seller, date_posted, invoice_type)
                 self.create_amazon_reimbursement_invoice_line(
                     seller, reimbursement_invoice, line.name, reimbursement_invoice_amount, trans_line)
                 self.write({'reimbursement_invoice_ids': [(4, reimbursement_invoice.id)]})
+                line.write({'reimbursement_invoice_id': reimbursement_invoice.id})
             self.reconcile_reimbursement_invoice(reimbursement_invoice, line, bank_statement)
 
         return True

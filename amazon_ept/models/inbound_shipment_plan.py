@@ -433,7 +433,7 @@ class InboundShipmentPlanEpt(models.Model):
                                                  instance.country_id.code,
                       'ship_to_country_code': ship_to_country_code,
                       'labelpreppreference': self.label_preference,
-                      'sku_qty_dict': sku_qty_dict,
+                      'sku_qty_list': sku_qty_dict,
                       'ship_from_address': address_dict
                       }
             response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT + '/iap_request', params=kwargs, timeout=1000)

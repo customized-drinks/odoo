@@ -85,7 +85,8 @@
                             <field name="shipment_line_ids" nolabel="1" colspan="4" >
                                 <tree editable="bottom">
                                     <field name="amazon_product_id"
-                                            required="1" domain="[('fulfillment_by','=','FBA'),('instance_id','=',parent.instance_id)]"/>
+                                            required="1" domain="[('fulfillment_by','=','FBA'),('instance_id','=',parent.instance_id)]"
+                                           options="{'no_create': True, 'no_create_edit':True}"/>
                                     <field name="odoo_product_id"/>
                                     <field name="quantity" required="1"/>
                                     <field name="seller_sku"/>

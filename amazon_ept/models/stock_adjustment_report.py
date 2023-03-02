@@ -68,13 +68,13 @@ class StockAdjustmentReportHistory(models.Model):
             self.mismatch_details = False
 
     name = fields.Char(size=256)
-    state = fields.Selection([('draft', 'Draft'), ('_SUBMITTED_', 'SUBMITTED'),
-                              ('_IN_PROGRESS_', 'IN_PROGRESS'), ('_CANCELLED_', 'CANCELLED'),
-                              ('_DONE_', 'Report Received'), ('SUBMITTED', 'SUBMITTED'),
-                              ('IN_PROGRESS', 'IN_PROGRESS'), ('CANCELLED', 'CANCELLED'), ('DONE', 'Report Received'),
-                              ('FATAL', 'FATAL'), ('IN_QUEUE', 'IN_QUEUE'), ('_DONE_NO_DATA_', 'DONE_NO_DATA'),
-                              ('processed', 'PROCESSED'), ('partially_processed', 'Partially Processed')],
-                             string='Report Status', default='draft')
+    state = fields.Selection([('draft', 'Draft'), ('SUBMITTED', 'SUBMITTED'), ('_SUBMITTED_', 'SUBMITTED'),
+                              ('IN_QUEUE', 'IN_QUEUE'), ('IN_PROGRESS', 'IN_PROGRESS'),
+                              ('_IN_PROGRESS_', 'IN_PROGRESS'), ('DONE', 'Report Received'),
+                              ('_DONE_', 'Report Received'), ('_DONE_NO_DATA_', 'DONE_NO_DATA'),
+                              ('FATAL', 'FATAL'), ('partially_processed', 'Partially Processed'),
+                              ('processed', 'PROCESSED'), ('CANCELLED', 'CANCELLED'),
+                              ('_CANCELLED_', 'CANCELLED')], string='Report Status', default='draft')
     seller_id = fields.Many2one('amazon.seller.ept', string='Seller', copy=False,
                                 help="Select Seller id from you wanted to get Shipping report")
     attachment_id = fields.Many2one('ir.attachment', string="Attachment")
@@ -307,6 +307,8 @@ class StockAdjustmentReportHistory(models.Model):
             raise UserError(_(response.get('error', {})))
         if response.get('result', {}):
             self.update_report_history(response.get('result', {}))
+            if self.state in ['_DONE_', 'DONE'] and self.report_document_id:
+                self.get_report()
         return True
 
     def update_report_history(self, request_result):
@@ -442,6 +444,9 @@ class StockAdjustmentReportHistory(models.Model):
         amazon_adjustment_reason_code_obj = self.env['amazon.adjustment.reason.code']
         amazon_stock_adjustment_config_obj = self.env['amazon.stock.adjustment.config']
         partially_processed = False
+        sync_fulfillment = True
+        fc_available = self.seller_id.amz_warehouse_ids.filtered(lambda l: l.is_fba_warehouse). \
+            mapped('fulfillment_center_ids').mapped('center_code')
         group_wise_lines_list = {}
         imp_file = StringIO(base64.b64decode(self.attachment_id.datas).decode())
         reader = csv.DictReader(imp_file, delimiter='\t')
@@ -451,6 +456,10 @@ class StockAdjustmentReportHistory(models.Model):
         for row in reader:
             if row.get('Event Type') != 'Adjustments':
                 continue
+            if sync_fulfillment and not row.get('Fulfillment Center', False) in fc_available:
+                self.env['amazon.seller.ept'].with_context({'for_stock_adjustment': True}). \
+                    request_fba_fulfilment_centers(self.seller_id.ids)
+                sync_fulfillment = False
             reason = row.get('Reason', '')
             if not reason:
                 continue

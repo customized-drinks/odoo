@@ -120,6 +120,7 @@ class AmazonInboundImportShipmentWizard(models.TransientModel):
         :return:
         @author: Keyur Kanani
         """
+        inbound_shipment_list = []
         amz_inbound_shipment_obj = self.env['amazon.inbound.shipment.ept']
         shipment_ids = ship_ids.split(',')
         # No Need to Import Duplicate Inbound Shipment
@@ -137,6 +138,9 @@ class AmazonInboundImportShipmentWizard(models.TransientModel):
             inbound_shipment = self.create_amazon_inbound_shipment(amazon_shipments, instance, warehouse_id.id, ship_to_address)
             self.get_list_inbound_shipment_items(shipment_id, instance, inbound_shipment.id)
             inbound_shipment.create_shipment_picking()
+            if inbound_shipment:
+                inbound_shipment_list.append(inbound_shipment.id)
+        return inbound_shipment_list
 
     def amz_prepare_inbound_kwargs_vals(self, instance):
         """

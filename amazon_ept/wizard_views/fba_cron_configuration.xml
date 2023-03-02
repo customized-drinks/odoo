@@ -51,7 +51,7 @@
                             </div>
                             <div class="o_setting_right_pane">
                                 <label for="amz_auto_import_shipment_report"
-                                       string="Auto Request and Process FBA Shipment Report?"/>
+                                       string="Auto Request and Process FBA Shipment Report ?"/>
                                 <div class="text-muted">
                                     Schedule automized request and process FBA shipment report
                                 </div>
@@ -115,7 +115,7 @@
                             </div>
                             <div class="o_setting_right_pane">
                                 <label for="amz_auto_import_return_report"
-                                       string="Auto Request and Process FBA Customer Return Report?"/>
+                                       string="Auto Request and Process FBA Customer Return Report ?"/>
                                 <div class="text-muted">
                                     Schedule automized request and process FBA customer return report
                                 </div>
@@ -152,7 +152,7 @@
                                 </div>
                                 <div class="o_setting_right_pane">
                                     <label for="amz_stock_auto_import_by_report"
-                                           string="Auto Request and Process FBA Live Stock Report?"/>
+                                           string="Auto Request and Process FBA Live Stock Report ?"/>
                                     <div class="text-muted">
                                         Schedule automized request and process live FBA inventory report from Amazon
                                     </div>
@@ -213,7 +213,7 @@
                             </div>
                             <div class="o_setting_right_pane">
                                 <label for="amz_auto_import_inbound_shipment_status"
-                                       string="Auto Import FBA Inbound Shipment Item Status?"/>
+                                       string="Auto Import FBA Inbound Shipment Item Status ?"/>
                                 <div class="text-muted">
                                     Schedule automized import FBA inbound shipment item status from Amazon
                                 </div>

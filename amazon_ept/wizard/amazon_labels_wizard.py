@@ -33,7 +33,14 @@ class AmazonShipmentLabelWizard(models.TransientModel):
                                   ('PackageLabel_Letter_6', 'PackageLabel_Letter_6'),
                                   ('PackageLabel_A4_2', 'PackageLabel_A4_2'),
                                   ('PackageLabel_A4_4', 'PackageLabel_A4_4'),
-                                  ('PackageLabel_Plain_Paper', 'PackageLabel_Plain_Paper')],
+                                  ('PackageLabel_Plain_Paper', 'PackageLabel_Plain_Paper'),
+                                  ('PackageLabel_Letter_6_CarrierLeft', 'PackageLabel_Letter_6_CarrierLeft'),
+                                  ('PackageLabel_Plain_Paper_CarrierBottom', 'PackageLabel_Plain_Paper_CarrierBottom'),
+                                  ('PackageLabel_Thermal', 'PackageLabel_Thermal'),
+                                  ('PackageLabel_Thermal_Unified', 'PackageLabel_Thermal_Unified'),
+                                  ('PackageLabel_Thermal_NonPCP', 'PackageLabel_Thermal_NonPCP'),
+                                  ('PackageLabel_Thermal_No_Carrier_Rotation',
+                                   'PackageLabel_Thermal_No_Carrier_Rotation')],
                                  required=True,
                                  string='Package Type',
                                  help="""
@@ -59,27 +66,25 @@ class AmazonShipmentLabelWizard(models.TransientModel):
             return shipment.instance_id_ept
         return shipment.shipment_plan_id.instance_id
 
-    def get_labels_from_amazon(self, instance, label_type, shipment_rec, number_of_pallet,
-                               number_of_package):
+    def get_labels_from_amazon(self, instance, label_type, shipment_rec, number_of_package, box_no):
         """
         This method is used request for get labels from the amazon and return the response
         """
         account = self.env['iap.account'].search([('service_name', '=', 'amazon_ept')])
         dbuuid = self.env['ir.config_parameter'].sudo().get_param('database.uuid')
-
-        kwargs = {'merchant_id': instance.merchant_id and str(instance.merchant_id) or False,
-                  'app_name': 'amazon_ept_spapi',
-                  'account_token': account.account_token,
-                  'emipro_api': 'get_labels_from_amazon_sp_api',
-                  'dbuuid': dbuuid,
-                  'amazon_marketplace_code': instance.country_id.amazon_marketplace_code or
-                                             instance.country_id.code,
-                  'shipment_id': shipment_rec.shipment_id,
-                  'page_type': self.page_type,
-                  'number_of_pallet': number_of_pallet,
-                  'number_of_package': number_of_package,
-                  'label_type': label_type,
-                  }
+        kwargs = {
+            'merchant_id': instance.merchant_id and str(instance.merchant_id) or False,
+            'app_name': 'amazon_ept_spapi',
+            'account_token': account.account_token,
+            'emipro_api': 'get_inbound_shipment_labels_spapi',
+            'dbuuid': dbuuid,
+            'amazon_marketplace_code': instance.country_id.amazon_marketplace_code or instance.country_id.code,
+            'shipment_id': shipment_rec.shipment_id,
+            'page_type': self.page_type,
+            'number_of_package': number_of_package,
+            'label_type': label_type,
+            'box_no': box_no
+        }
         response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT + '/iap_request', params=kwargs, timeout=1000)
         return response
 
@@ -105,8 +110,7 @@ class AmazonShipmentLabelWizard(models.TransientModel):
         ctx = self._context.copy() or {}
         shipment_id = ctx.get('active_id', False)
         model = ctx.get('active_model', False)
-        account = self.env['iap.account'].search([('service_name', '=', 'amazon_ept')])
-        dbuuid = self.env['ir.config_parameter'].sudo().get_param('database.uuid')
+        labels_list = []
         if not shipment_id or model != 'amazon.inbound.shipment.ept':
             return True
         shipment_rec = self.env['amazon.inbound.shipment.ept'].browse(shipment_id)
@@ -116,21 +120,12 @@ class AmazonShipmentLabelWizard(models.TransientModel):
         country = instance.marketplace_id.country_id.name if \
             instance.marketplace_id.country_id else ''
         page_type = self.page_type
-        label_type = ctx.get('label_type', '')
-        number_of_package = 1
-        number_of_pallet = 1
-        if label_type == 'delivery':
-            number_of_pallet = self.number_of_package
-        else:
-            number_of_package = self.number_of_package
+        amz_label_type = 'PALLET' if ctx.get('label_type', '') == 'delivery' else 'UNIQUE'
         flag = False
         if page_type in ['PackageLabel_Letter_2', 'PackageLabel_Letter_4',
                          'PackageLabel_Letter_6'] and country_code not in ['CA', 'US']:
             flag = True
-        if page_type in ['PackageLabel_A4_2', 'PackageLabel_A4_4'] and country_code not in ['FR',
-                                                                                            'DE',
-                                                                                            'IT',
-                                                                                            'ES',
+        if page_type in ['PackageLabel_A4_2', 'PackageLabel_A4_4'] and country_code not in ['FR', 'DE', 'IT', 'ES',
                                                                                             'GB']:
             flag = True
         if page_type == 'PackageLabel_Letter_2' and country_code == 'US' and not shipment_rec.is_partnered:
@@ -138,98 +133,35 @@ class AmazonShipmentLabelWizard(models.TransientModel):
         if page_type == 'PackageLabel_Letter_6' and country_code == 'US' and shipment_rec.is_partnered:
             flag = True
         if flag:
-            raise UserError(_(
-                'Please select correct Page Type, Page type %s not supported for country %s.' % (page_type, country)))
-        if shipment_rec.is_partnered:
-            list_box_no = self.get_unique_labels_from_amazon(shipment_rec)
-            # Need to add number_of_packages parameter in kwargs if we
-            # don't get expected response from amazon by using this API.
-            kwargs = {'merchant_id': instance.merchant_id and str(instance.merchant_id) or False,
-                      'app_name': 'amazon_ept_spapi',
-                      'account_token': account.account_token,
-                      'emipro_api': 'get_unique_package_labels',
-                      'dbuuid': dbuuid,
-                      'amazon_marketplace_code': instance.country_id.amazon_marketplace_code or
-                                                 instance.country_id.code,
-                      'shipment_id': shipment_rec.shipment_id,
-                      'page_type': self.page_type,
-                      'list_box_no': list_box_no,
-                      }
-            response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT + '/iap_request', params=kwargs, timeout=1000)
+            raise UserError(_('Please select correct Page Type, Page type %s not supported for country %s.' % (
+                page_type, country)))
 
-        else:
-            response = self.get_labels_from_amazon(instance, label_type, shipment_rec,
-                                                   number_of_pallet, number_of_package)
         if not shipment_rec.is_partnered:
             shipment_rec.update_non_partnered_carrier()
-            response = self.get_labels_from_amazon(instance, label_type, shipment_rec,
-                                                   number_of_pallet, number_of_package)
-        elif response.get('error', False):
-            raise UserError(_(response.get('error', {})))
+        list_box_no = self.get_unique_labels_from_amazon(shipment_rec)
+        number_of_package = len(list_box_no)
+        for box_no in list_box_no:
+            response = self.get_labels_from_amazon(instance, amz_label_type, shipment_rec, number_of_package, box_no)
+            if response.get('error'):
+                raise UserError(_(response.get('error')))
+            attachment = self.create_shipment_label_attachment(response)
+            labels_list.append(attachment.id)
+        shipment_rec.message_post(body=_("<b>Amazon Labels Downloaded</b>"), attachment_ids=labels_list)
+        return True
 
+    def create_shipment_label_attachment(self, response):
         result = response.get('result', {})
         document_url = result.get('DownloadURL', '')
         document = requests.get(document_url)
         if document.status_code != 200:
-            return
+            return True
         datas = base64.b64encode(document.content)
-        name = document.request.path_url.split('/')[-1]
-        amazon_labels = self.env['ir.attachment'].create({
+        name = document.request.path_url.split('/')[-1].split('?')[0]
+        label_attachment = self.env['ir.attachment'].create({
             'name': name,
             'datas': datas,
-            'res_model': 'mail.compose.message',
+            'res_model': self._name,
+            'res_id': self.id,
             'type': 'binary'
         })
-        shipment_rec.message_post(body=_("<b>Amazon Labels Downloaded</b>"), attachment_ids=amazon_labels.ids)
-
-        return True
-
-        # changes based on MWS API response from amazon
-
-        # result = response.get('result', {})
-        # label_doc = result.get('TransportDocument', {}).get('PdfDocument', {}).get('value', '')
-        #
-        # attachment_obj = self.env['ir.attachment']
-        # shipment_rec.write({'box_count': self.number_of_box})
-        # if label_doc:
-        #     label_doc = base64.b64decode(label_doc)
-        #     filename = 'package_label_%s.zip' % (time.strftime('%Y%m%d_%H%M%S'))
-        #     label_zip = open('/tmp/%s' % filename, 'wb')
-        #     label_zip.write(label_doc)
-        #     label_zip.close()
-        #     zip_file = open('/tmp/%s' % filename, 'rb')
-        #     z = zipfile.ZipFile(zip_file)
-        #     for name in z.namelist():
-        #         path = z.extract(name, '/tmp/')
-        #         fh = open(path, 'rb')
-        #         datas = base64.b64encode(fh.read())
-        #         fh.close()
-        #         if label_type == 'delivery':
-        #             fname = 'Delivery_' + name
-        #         else:
-        #             fname = 'Shipment_' + name
-        #         attachments = attachment_obj.search([('name', '=', fname),
-        #                                              ('res_model', '=',
-        #                                               'amazon.inbound.shipment.ept'),
-        #                                              ('res_id', '=', shipment_rec.id)
-        #                                              ])
-        #         if attachments:
-        #             attachments.unlink()
-        #         attachment = attachment_obj.create({
-        #             'name': fname,
-        #             'datas': datas,
-        #             'res_model': 'mail.compose.message',
-        #             'type': 'binary'
-        #         })
-        #         shipment_rec.message_post(body=_("<b>Amazon Labels Downloaded</b>"),
-        #                                   attachment_ids=attachment.ids)
-        #         try:
-        #             os.remove(path)
-        #         except Exception as e:
-        #             pass
-        #     zip_file.close()
-        #     try:
-        #         os.remove('/tmp/%s' % filename)
-        #     except Exception as e:
-        #         pass
-        # return True
+        return label_attachment

@@ -57,14 +57,13 @@ class VcsTaxReport(models.Model):
                             help="Unique Report id for recognise report in Odoo")
     report_type = fields.Char(size=256, help="Amazon Report Type")
     seller_id = fields.Many2one('amazon.seller.ept', string='Seller', copy=False)
-    state = fields.Selection([('draft', 'Draft'), ('_SUBMITTED_', 'SUBMITTED'),
-                              ('_IN_PROGRESS_', 'IN_PROGRESS'), ('_CANCELLED_', 'CANCELLED'),
-                              ('_DONE_', 'DONE'), ('IN_PROGRESS', 'IN_PROGRESS'),
-                              ('FATAL', 'FATAL'), ('CANCELLED', 'CANCELLED'), ('DONE', 'DONE'),
-                              ('IN_QUEUE', 'IN_QUEUE'), ('SUBMITTED', 'SUBMITTED'),
-                              ('partially_processed', 'Partially Processed'),
-                              ('_DONE_NO_DATA_', 'DONE_NO_DATA'), ('processed', 'PROCESSED')],
-                             string='Report Status', default='draft')
+    state = fields.Selection([('draft', 'Draft'), ('SUBMITTED', 'SUBMITTED'),
+                              ('_SUBMITTED_', 'SUBMITTED'), ('IN_QUEUE', 'IN_QUEUE'),
+                              ('IN_PROGRESS', 'IN_PROGRESS'), ('_IN_PROGRESS_', 'IN_PROGRESS'),
+                              ('DONE', 'DONE'), ('_DONE_', 'DONE'), ('_DONE_NO_DATA_', 'DONE_NO_DATA'),
+                              ('FATAL', 'FATAL'), ('partially_processed', 'Partially Processed'),
+                              ('processed', 'PROCESSED'), ('CANCELLED', 'CANCELLED'),
+                              ('_CANCELLED_', 'CANCELLED')], string='Report Status', default='draft')
     attachment_id = fields.Many2one('ir.attachment', string="Attachment")
     auto_generated = fields.Boolean('Auto Generated Record ?', default=False)
     log_count = fields.Integer(compute="_compute_log_count")
@@ -247,6 +246,8 @@ class VcsTaxReport(models.Model):
                     raise UserError(_(response.get('error', {})))
             if response.get('result', {}):
                 self.update_report_history(response.get('result', {}))
+                if self.state in ['_DONE_', 'DONE'] and self.report_document_id:
+                    self.get_report()
         return True
 
     def get_report(self):

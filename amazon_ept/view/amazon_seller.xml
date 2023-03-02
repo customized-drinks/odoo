@@ -49,6 +49,9 @@
                     <field name="is_sp_api_amz_seller" invisible="1"/>
                     <button name="migrate_to_sp_api" string="Migrate To SP API"
                             class="oe_highlight" type="object" attrs="{'invisible': [('is_sp_api_amz_seller', '=', True)]}"/>
+                    <button name="re_authorisation_to_sp_api" string="SP API Re-Authorisation"
+                            class="oe_highlight" type="object" 
+                            attrs="{'invisible': [('is_sp_api_amz_seller', '!=', True)]}"/>
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title='Archived Seller' bg_color="bg-danger"
@@ -205,6 +208,11 @@
                         </page>
                     </notebook>
                 </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                    <field name="activity_ids" widget="kanban_activity"/>
+                </div>
             </form>
         </field>
     </record>

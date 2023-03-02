@@ -21,7 +21,7 @@ class AmazonInstanceEpt(models.Model):
     warehouse and others.
     """
     _name = 'amazon.instance.ept'
-    _inherit = ['mail.thread']
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'Amazon Instance Details'
 
     seller_id = fields.Many2one('amazon.seller.ept', string='Seller', required=True)
@@ -98,6 +98,30 @@ class AmazonInstanceEpt(models.Model):
                                                   copy=False, \
                                                   help="Warehouses which will fulfill the orders")
     amazon_order_data = fields.Text(compute="_compute_kanban_amazon_order_data")
+
+    def write(self, vals):
+        """
+        This method is Overridden with super call
+        to make a Logger Note about the changes that user have made in the current model
+        :return super()
+        """
+        for instance in self:
+            msg = ""
+            new = instance.new(vals)
+            for key, value in vals.items():
+                if getattr(instance, key) != getattr(new, key):
+                    if isinstance(getattr(instance, key), models.BaseModel) and \
+                            getattr(instance, key).ids == getattr(new, key).ids:
+                        continue
+                    if instance.seller_id.amz_check_last_sync_field(key):
+                        continue
+                    msg += "<li><b>%s:  </b> %s  ->  %s</li>" % \
+                           (instance._fields.get(key).string,
+                            instance.env['ir.qweb']._get_field(instance, key, '', '', {}, {}, {})[1],
+                            instance.env['ir.qweb']._get_field(new, key, '', '', {}, {}, {})[1])
+            if msg and msg != "":
+                instance.message_post(body=msg)
+        return super(AmazonInstanceEpt, self).write(vals)
 
     def _compute_kanban_amazon_order_data(self):
         """
@@ -540,7 +564,17 @@ class AmazonInstanceEpt(models.Model):
         else:
             raise UserError(_(response.get('error', '')))
         if flag:
-            raise UserError(_('Service working properly'))
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'target': 'new',
+                    'title': _('Success'),
+                    'type': 'success',
+                    'message': 'Service working properly',
+                    'sticky': False
+                }
+            }
         return True
 
     def toggle_active(self):

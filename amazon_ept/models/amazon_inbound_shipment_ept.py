@@ -234,6 +234,8 @@ class InboundShipmentEpt(models.Model):
     are_all_pickings_cancelled = fields.Boolean(compute='_compute_are_all_pickings_cancelled', store=False)
     active = fields.Boolean("Active", default=True)
     amz_inbound_create_date = fields.Date(string='Create Date', readonly=True)
+    company_id = fields.Many2one('res.company', string="Company", copy=False, compute="_compute_company", store=True,
+                                 help="This Field relocates Amazon company.")
 
     def _compute_picking_count(self):
         """
@@ -242,6 +244,18 @@ class InboundShipmentEpt(models.Model):
         """
         for rec in self:
             rec.count_pickings = len(rec.picking_ids.ids)
+
+    @api.depends('instance_id_ept')
+    def _compute_company(self):
+        """
+        Define this method for assign company in the current record.
+        """
+        for record in self:
+            company_id = record.instance_id_ept.company_id.id if record.instance_id_ept and\
+                                                                 record.instance_id_ept.company_id else False
+            if not company_id:
+                company_id = self.env.company.id
+            record.company_id = company_id
 
     def action_view_pickings(self):
         """
@@ -418,7 +432,7 @@ class InboundShipmentEpt(models.Model):
         if create_or_update == 'update':
             emipro_api = 'update_shipment_in_amazon_sp_api'
         elif create_or_update == 'create':
-            emipro_api = 'create_shipment_in_amazon_sp_api',
+            emipro_api = 'create_shipment_in_amazon_sp_api'
 
         if emipro_api:
             kwargs = self.amz_prepare_inbound_shipment_kwargs_vals(instance)
@@ -982,7 +996,7 @@ class InboundShipmentEpt(models.Model):
 
         transport_status = transport_result.get('TransportStatus', '')
         ship_type = transport_header.get('ShipmentType', '')
-        is_partnered = True if str(transport_header.get('IsPartnered', {})) == 'true' else False
+        is_partnered = True if str(transport_header.get('IsPartnered', {})) in ['True','true'] else False
         if is_partnered and ship_type == 'SP' and transport_status in ['ESTIMATED', 'CONFIRMING',
                                                                        'CONFIRMED']:
             small_parcel_data = transport_detail.get('PartneredSmallParcelData', {})
@@ -1047,7 +1061,7 @@ class InboundShipmentEpt(models.Model):
             result = xml_to_dict_obj.fromstring(result)
             summary = result.get('AmazonEnvelope', {}).get('Message', {}).get(
                 'ProcessingReport', {}).get('ProcessingSummary', {})
-            error = summary.get('MessagesWithError', '')
+            error=summary.get('MessagesWithError').get('value','')
             if error != '0':
                 job_log_vals = {
                     'module': 'amazon_ept',
@@ -1056,10 +1070,13 @@ class InboundShipmentEpt(models.Model):
                 job = log_obj.create(job_log_vals)
                 summary = result.get('AmazonEnvelope', {}).get('Message', {}).get(
                     'ProcessingReport', {}).get('ProcessingSummary', {})
-                description = "MessagesProcessed %s" % (summary.get('MessagesProcessed', ''))
-                description = "%s || MessagesSuccessful %s" % (description, summary.get('MessagesSuccessful', ''))
-                description = "%s || MessagesWithError %s" % (description, summary.get('MessagesWithError', ''))
-                description = "%s || MessagesWithWarning %s" % (description, summary.get('MessagesWithWarning', ''))
+                description = "MessagesProcessed %s" % (summary.get('MessagesProcessed').get('value', ''))
+                description = "%s || MessagesSuccessful %s" % (description, summary.get('MessagesSuccessful').get(
+                    'value', ''))
+                description = "%s || MessagesWithError %s" % (description, summary.get('MessagesWithError').get(
+                    'value', ''))
+                description = "%s || MessagesWithWarning %s" % (description, summary.get('MessagesWithWarning').get(
+                    'value', ''))
                 summary = result.get('AmazonEnvelope', {}).get('Message', {}).get(
                     'ProcessingReport', {}).get('Result', [])
                 if not isinstance(summary, list):
@@ -1102,8 +1119,9 @@ class InboundShipmentEpt(models.Model):
                                  'res_id': shipment.id, 'message': message, 'log_book_id': job.id}
                 log_line_obj.create(log_line_vals)
                 continue
-            count = 1
             flag = True
+            package_list = []
+            shipment_carrier = ''
             for package in shipment.partnered_small_parcel_ids:
                 if not package.ul_id:
                     message = 'Inbound Shipment %s is not update in amazon because dimension ' \
@@ -1124,29 +1142,16 @@ class InboundShipmentEpt(models.Model):
                     break
                 dimension_unit = package.ul_id.dimension_unit or 'centimeters'
                 if shipment.carrier_id:
-                    data.update({
-                        'TransportDetails.PartneredSmallParcelData.CarrierName':
-                            shipment.carrier_id.amz_carrier_code or shipment.carrier_id.name})
-
-                data.update({
-                    'TransportDetails.PartneredSmallParcelData.PackageList.member.'
-                    '%d.Dimensions.Unit' % (count): dimension_unit})
-                data.update({
-                    'TransportDetails.PartneredSmallParcelData.PackageList.member.'
-                    '%d.Dimensions.Length' % (count): str(package.ul_id.length)})
-                data.update({
-                    'TransportDetails.PartneredSmallParcelData.PackageList.member.'
-                    '%d.Dimensions.Width' % (count): str(package.ul_id.width)})
-                data.update({
-                    'TransportDetails.PartneredSmallParcelData.PackageList.member.'
-                    '%d.Dimensions.Height' % (count): str(package.ul_id.height)})
-                data.update({
-                    'TransportDetails.PartneredSmallParcelData.PackageList.member.'
-                    '%d.Weight.Unit' % (count): package.weight_unit})
-                data.update({
-                    'TransportDetails.PartneredSmallParcelData.PackageList.member.'
-                    '%d.Weight.Value' % (count): str(int(package.weight_value))})
-                count += 1
+                    shipment_carrier = shipment.carrier_id.amz_carrier_code or shipment.carrier_id.name
+                package_list.append({'Dimensions': {'Unit': dimension_unit, 'Length': str(package.ul_id.length),
+                                                    'Width': package.ul_id.width, 'Height': str(package.ul_id.height)},
+                                     'Weight': {'Unit': package.weight_unit,
+                                                'Value': str(int(package.weight_value))}})
+            if package_list:
+                data.update({'TransportDetails': {'PartneredSmallParcelData': {'PackageList': package_list}}})
+            if shipment_carrier:
+                data.get('TransportDetails', {}).get('PartneredSmallParcelData', {}).update(
+                    {'CarrierName': shipment_carrier})
             if flag:
                 kwargs = self.amz_prepare_inbound_shipment_kwargs_vals(instance)
                 kwargs.update({'emipro_api': 'put_transport_content_sp_api',
@@ -1199,10 +1204,8 @@ class InboundShipmentEpt(models.Model):
                 carrier_name = pickings[0].carrier_id.amz_carrier_code if pickings[0].carrier_id else 'OTHER'
             else:
                 carrier_name = 'OTHER'
-            data.update({'TransportDetails.NonPartneredSmallParcelData.CarrierName': str(carrier_name)})
-            traking_dict = {}
-            count_box = 0
             tacking_no_list = []
+            tracking_list = []
             back_orders = shipment.picking_ids.filtered(
                 lambda pick: pick.state not in [
                     'done', 'cancel'] and not pick.is_fba_wh_picking and not pick.updated_in_amazon)
@@ -1213,29 +1216,25 @@ class InboundShipmentEpt(models.Model):
                 for op in picking.move_line_ids:
                     tracking_no = op.result_package_id and op.result_package_id.tracking_no
                     if tracking_no and tracking_no not in tacking_no_list:
-                        count_box += 1
-                        traking_dict.update({
-                            'TransportDetails.NonPartneredSmallParcelData.PackageList.member.' + str(
-                                count_box) + '.TrackingId': str(tracking_no),})
+                        tracking_list.append({'TrackingId':str(tracking_no)})
                         tacking_no_list.append(tracking_no)
 
-                if not traking_dict:
+                if not tracking_list:
                     message = 'Inbound Shipment %s is not update in amazon because Tracking ' \
                               'number not found in the system' % shipment.name
                     log_line_vals = {'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
                                      'res_id': shipment.id, 'message': message, 'log_book_id': job.id}
                     log_line_obj.create(log_line_vals)
 
-            while True:
-                if count_box >= shipment.box_count:
-                    break
-                count_box += 1
-                traking_dict.update({
-                    'TransportDetails.NonPartneredSmallParcelData.PackageList.member.' + str(
-                        count_box) + '.TrackingId': str(' '),})
-            data.update(traking_dict)
+            # tracking_ids = ",".join(tracking for tracking in tacking_no_list)
+            if tacking_no_list:
+                data.update(
+                    {'TransportDetails': {'NonPartneredSmallParcelData': {'PackageList': tracking_list}}})
+            if carrier_name:
+                data.get('TransportDetails', {}).get('NonPartneredSmallParcelData', {}).update(
+                    {'CarrierName': carrier_name})
             kwargs = self.amz_prepare_inbound_shipment_kwargs_vals(instance)
-            kwargs.update({'emipro_api': 'export_non_partnered_small_parcel_tracking_sp_api',
+            kwargs.update({'emipro_api': 'put_transport_content_sp_api',
                            'shipment_id': shipment.shipment_id, 'data': data})
             response = iap_tools.iap_jsonrpc(DEFAULT_ENDPOINT + '/iap_request', params=kwargs, timeout=1000)
             if response.get('result', {}):
@@ -1414,8 +1413,8 @@ class InboundShipmentEpt(models.Model):
             if back_orders:
                 back_orders.action_cancel()
 
-            data.update({'TransportDetails.NonPartneredLtlData.CarrierName': str(carrier_name)})
-            data.update({'TransportDetails.NonPartneredLtlData.ProNumber': str(shipment.pro_number)})
+            data.update({'TransportDetails': {'NonPartneredLtlData': {'CarrierName': str(carrier_name),
+                                                                      'ProNumber': str(shipment.pro_number)}}})
 
             kwargs = self.amz_prepare_inbound_shipment_kwargs_vals(instance)
             kwargs.update({'emipro_api': 'put_transport_content_sp_api',
@@ -1898,17 +1897,13 @@ class InboundShipmentEpt(models.Model):
         data = {'IsPartnered': 'true' if self.is_partnered else 'false',
                 'ShipmentType': 'SP' if self.shipping_type == 'sp' else 'LTL'}
         if self.shipping_type == 'sp':
-            data.update({
-                'TransportDetails.NonPartneredSmallParcelData.CarrierName': 'OTHER',
-                'TransportDetails.NonPartneredSmallParcelData.PackageList.member.' + str(
-                    '1') + '.TrackingId': str(' '),
-            })
+            data.update({'TransportDetails': {'NonPartneredSmallParcelData': {'CarrierName': str('OTHER'),
+                                                                              'PackageList': [
+                                                                                  {'TrackingId': str(' ')}]}}})
         else:
             carrier_code = self.carrier_id.amz_carrier_code if self.carrier_id else 'OTHER'
-            data.update({
-                'TransportDetails.NonPartneredLtlData.ProNumber': '##########',
-                'TransportDetails.NonPartneredLtlData.CarrierName': carrier_code,
-            })
+            data.update({'TransportDetails': {'NonPartneredLtlData': {'CarrierName': str(carrier_code),
+                                                                      'ProNumber': '##########'}}})
         kwargs = self.amz_prepare_inbound_shipment_kwargs_vals(instance)
         kwargs.update({'emipro_api': 'put_transport_content_sp_api',
                        'shipment_id': self.shipment_id, 'data': data})
@@ -1941,51 +1936,36 @@ class InboundShipmentEpt(models.Model):
 
             if not name or not phone or not email:
                 message = 'Invalid contact details found check name/phone/email for contact %s' % (name)
-                log_line_vals = {
-                    'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
-                    'res_id': shipment.id or 0,
-                    'message': message,
-                    'log_book_id': job.id
-                }
+                log_line_vals = {'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
+                                 'res_id': shipment.id or 0, 'message': message, 'log_book_id': job.id}
                 log_line_obj.create(log_line_vals)
                 continue
 
             if len(shipment.partnered_ltl_ids.ids) <= 0:
                 message = 'Number of box must be greater than zero for shipment %s' % (shipment.name)
 
-                log_line_vals = {
-                    'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
-                    'res_id': shipment.id or 0,
-                    'message': message,
-                    'log_book_id': job.id
-                }
+                log_line_vals = {'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
+                                 'res_id': shipment.id or 0, 'message': message, 'log_book_id': job.id}
                 log_line_obj.create(log_line_vals)
                 continue
             data = {'IsPartnered': 'true' if shipment.is_partnered else 'false',
                     'ShipmentType': 'SP' if shipment.shipping_type == 'sp' else 'LTL',
-                    'TransportDetails.PartneredLtlData.Contact.Name': name,
-                    'TransportDetails.PartneredLtlData.Contact.Phone': str(phone),
-                    'TransportDetails.PartneredLtlData.Contact.Email': email,
-                    'TransportDetails.PartneredLtlData.BoxCount': str(len(shipment.partnered_ltl_ids.ids)),
-                    'TransportDetails.PartneredLtlData.FreightReadyDate':
-                        shipment.freight_ready_date.strftime("%Y-%m-%d")
+                    'TransportDetails': {'PartneredLtlData':{'Contact':{'Name':name,'Phone':str(phone),'Email':email},
+                                         'BoxCount':str(len(shipment.partnered_ltl_ids.ids)),
+                                         'FreightReadyDate':shipment.freight_ready_date.strftime("%Y-%m-%d")}}
                     }
             instance = self.get_instance(shipment)
             if shipment.seller_freight_class:
-                data.update({
-                    'TransportDetails.PartneredLtlData.SellerFreightClass': shipment.seller_freight_class})
-            count = 1
+                data.get('TransportDetails', {}).get('PartneredLtlData', {}).update({
+                    'SellerFreightClass':shipment.seller_freight_class})
             flag = True
+            pallet_list = []
             for pallet in shipment.partnered_ltl_ids:
                 if not pallet.ul_id:
                     message = 'Inbound Shipment %s is not update in amazon because of dimension ' \
                               'for package not found' % shipment.name
-                    log_line_vals = {
-                        'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
-                        'res_id': shipment.id,
-                        'message': message,
-                        'log_book_id': job.id
-                    }
+                    log_line_vals = {'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
+                                     'res_id': shipment.id, 'message': message, 'log_book_id': job.id}
                     log_line_obj.create(log_line_vals)
                     flag = False
                     break
@@ -1994,53 +1974,31 @@ class InboundShipmentEpt(models.Model):
                     message = 'Inbound Shipment %s is not update in amazon because of Dimension ' \
                               'Length, Width and Height value must be greater that zero' % (shipment.name)
 
-                    log_line_vals = {
-                        'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
-                        'res_id': shipment.id,
-                        'message': message,
-                        'log_book_id': job.id
-                    }
+                    log_line_vals = {'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
+                                     'res_id': shipment.id, 'message': message, 'log_book_id': job.id}
                     log_line_obj.create(log_line_vals)
                     flag = False
                     break
                 dimension_unit = pallet.ul_id.dimension_unit or 'centimeters'
-                data.update({
-                    'TransportDetails.PartneredLtlData.PalletList.member.%d.Dimensions.Unit' % (
-                        count): dimension_unit})
-                data.update({
-                    'TransportDetails.PartneredLtlData.PalletList.member.%d.Dimensions.Length' % (
-                        count): str(pallet.ul_id.length)})
-                data.update({
-                    'TransportDetails.PartneredLtlData.PalletList.member.%d.Dimensions.Width' % (
-                        count): str(pallet.ul_id.width)})
-                data.update({
-                    'TransportDetails.PartneredLtlData.PalletList.member.%d.Dimensions.Height' % (
-                        count): str(pallet.ul_id.height)})
-
-                # Not required parameter, so if given then we will set otherwise we skip it.
-                if pallet.weight_unit and pallet.weight_value:
-                    data.update({
-                        'TransportDetails.PartneredLtlData.PalletList.member.%d.Weight.Unit' % (
-                            count): pallet.weight_unit})
-                    data.update({
-                        'TransportDetails.PartneredLtlData.PalletList.member.%d.Weight.Value' % (
-                            count): str(pallet.weight_value)})
-                data.update({'TransportDetails.PartneredLtlData.PalletList.member.%d.IsStacked' % (
-                    count): 'true' if pallet.is_stacked else 'false'})
-                count += 1
+                pallet_list.append({'Dimensions': {'Unit': dimension_unit, 'Length': str(pallet.ul_id.length),
+                                                   'Width': pallet.ul_id.width, 'Height': str(pallet.ul_id.height)},
+                                    'Weight': {'Unit': pallet.weight_unit,
+                                               'Value': str(int(pallet.weight_value))},
+                                    'IsStacked': 'true' if pallet.is_stacked else 'false'})
+            if pallet_list:
+                data.get('TransportDetails', {}).get('PartneredLtlData', {}).update({'PalletList': pallet_list})
 
             # Not required parameter, so if given then we will set otherwise we skip it.
             if shipment.amazon_shipment_weight_unit and shipment.amazon_shipment_weight:
-                data.update({'TransportDetails.PartneredLtlData.TotalWeight.Unit': str(
-                    shipment.amazon_shipment_weight_unit)})
-                data.update({'TransportDetails.PartneredLtlData.TotalWeight.Value': str(
-                    shipment.amazon_shipment_weight)})
+                data.get('TransportDetails', {}).get('PartneredLtlData', {}).update({'TotalWeight': {
+                    'Unit': str(shipment.amazon_shipment_weight_unit),
+                    'Value': str(shipment.amazon_shipment_weight)
+                }})
             if shipment.seller_declared_value and shipment.declared_value_currency_id:
-                data.update({
-                    'TransportDetails.PartneredLtlData.SellerDeclaredValue.CurrencyCode': str(
-                        shipment.declared_value_currency_id.name)})
-                data.update({'TransportDetails.PartneredLtlData.SellerDeclaredValue.Value': str(
-                    shipment.seller_declared_value)})
+                data.get('TransportDetails', {}).get('PartneredLtlData', {}).update({'SellerDeclaredValue': {
+                    'CurrencyCode': str(shipment.declared_value_currency_id.name),
+                    'Value': str(shipment.seller_declared_value)
+                }})
 
             if flag:
                 kwargs = self.amz_prepare_inbound_shipment_kwargs_vals(instance)
@@ -2050,12 +2008,8 @@ class InboundShipmentEpt(models.Model):
                 if response.get('error', False):
                     error_value = response.get('error', {})
                     message = '%s %s' % (error_value, shipment.name)
-                    log_line_vals = {
-                        'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
-                        'res_id': shipment.id,
-                        'message': message,
-                        'log_book_id': job.id
-                    }
+                    log_line_vals = {'model_id': log_line_obj.get_model_id('amazon.inbound.shipment.ept'),
+                                     'res_id': shipment.id, 'message': message, 'log_book_id': job.id}
                     log_line_obj.create(log_line_vals)
                     shipment.write({'state': 'ERROR'})
                 else:
@@ -2085,9 +2039,9 @@ class InboundShipmentEpt(models.Model):
         document_url = result.get('DownloadURL', '')
         document = requests.get(document_url)
         if document.status_code != 200:
-            return
+            return True
         datas = base64.b64encode(document.content)
-        name = document.request.path_url.split('/')[-1]
+        name = document.request.path_url.split('/')[-1].split('?')[0]
         bill_of_lading = self.env['ir.attachment'].create({
             'name': name,
             'datas': datas,
@@ -2095,8 +2049,7 @@ class InboundShipmentEpt(models.Model):
             'res_id': self.id,
             'type': 'binary'
         })
-        self.message_post(body=_("<b>Bill Of Lading Downloaded</b>"),
-                          attachment_ids=bill_of_lading.ids)
+        self.message_post(body=_("<b>Bill Of Lading Downloaded</b>"), attachment_ids=bill_of_lading.ids)
         return True
 
         # changes based MWS API response from amazon

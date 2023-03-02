@@ -115,6 +115,13 @@
         <field name="domain_force">[('company_id', 'in', company_ids)]</field>
     </record>
 
+    <record model="ir.rule" id="amazon_inbound_shipment_ept_multi_company">
+        <field name="name">Amazon Inbound Shipment multi-company</field>
+        <field name="model_id" ref="model_amazon_inbound_shipment_ept"/>
+        <field name="global" eval="True"/>
+        <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+    </record>
+
     <record id="vat_config_multi_company" model="ir.rule">
         <field name="name">VAT Configuration multi-company</field>
         <field name="model_id" ref="model_vat_config_ept"/>
