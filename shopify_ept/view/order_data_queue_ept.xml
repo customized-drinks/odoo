@@ -20,7 +20,7 @@
                     <field name="is_action_require" invisible="1"/>
                 </header>
                 <div class="alert alert-danger" role="alert" style="margin-bottom:0px;"
-                     attrs="{'invisible': ['|',('is_action_require','=',False),('state','=','done')]}">
+                     attrs="{'invisible': ['|',('is_action_require','=',False),('state','=','completed')]}">
                     <strong>
                         - Need to process this queue manually.
                         There are 3 attempts been made by automated action to process this queue,

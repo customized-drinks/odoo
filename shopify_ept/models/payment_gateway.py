@@ -104,9 +104,10 @@ class ShopifyPaymentGateway(models.Model):
                                                               order_response.get('name'))
             if order_data_queue_line:
                 order_data_queue_line.write({'state': 'failed', 'processed_at': datetime.now()})
-            return shopify_payment_gateway, auto_workflow_id
+            return shopify_payment_gateway, auto_workflow_id, False
 
         auto_workflow_id = workflow_config.auto_workflow_id if workflow_config else False
+        payment_term = workflow_config.payment_term_id if workflow_config else False
         if auto_workflow_id and not auto_workflow_id.picking_policy:
             message = "- Picking policy decides how the products will be delivered, " \
                       "'Deliver all at once' or 'Deliver each when available'.\n- System found %s Auto Workflow, " \
@@ -121,4 +122,4 @@ class ShopifyPaymentGateway(models.Model):
                 order_data_queue_line.write({'state': 'failed', 'processed_at': datetime.now()})
             auto_workflow_id = False
 
-        return shopify_payment_gateway, auto_workflow_id
+        return shopify_payment_gateway, auto_workflow_id, payment_term

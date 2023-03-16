@@ -4,7 +4,7 @@
 import json
 import logging
 import time
-
+# from psycopg2 import errors
 from odoo import models, fields
 from .. import shopify
 
@@ -118,18 +118,13 @@ class ShopifyProductDataQueueLineEpt(models.Model):
             self.env.cr.execute(
                 """update shopify_product_data_queue_ept set is_process_queue = False where is_process_queue = True""")
             self._cr.commit()
-            commit_count = 0
             for product_queue_line in self:
-                commit_count += 1
-                if commit_count == 10:
-                    queue_id.is_process_queue = True
-                    self._cr.commit()
-                    commit_count = 0
                 shopify_product_template_obj.shopify_sync_products(product_queue_line,
                                                                    False,
                                                                    shopify_instance,
                                                                    log_book_id)
-                queue_id.is_process_queue = False
+                queue_id.is_process_queue = True
+                self._cr.commit()
             queue_id.common_log_book_id = log_book_id
             if queue_id.common_log_book_id and not queue_id.common_log_book_id.log_lines:
                 queue_id.common_log_book_id.unlink()
@@ -177,8 +172,8 @@ class ShopifyProductDataQueueLineEpt(models.Model):
             if not shopify_template:
                 continue
             shopify_template.shopify_sync_product_images(template_data)
-            product_queue.write({'shopify_image_import_state': 'done'})
-
+            product_queue.write({'shopify_image_import_state': 'done', "synced_product_data": False})
+            self._cr.commit()
             if time.time() - start_time > image_import_cron_time - 60:
                 return True
 

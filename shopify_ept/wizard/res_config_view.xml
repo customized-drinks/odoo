@@ -49,6 +49,7 @@
                         <field name="shopify_company_id" required="1" string="Company"
                                options="{'no_create':True,'no_create':True,'no_create_edit':True}"
                                readonly="context.get('is_already_instance_created', False)"/>
+                        <field name="update_notification"/>
                     </group>
                     <group>
                         <field name='shopify_api_key' required="1"
@@ -57,6 +58,7 @@
                                readonly="context.get('is_already_instance_created', False)"/>
                         <field name='shopify_shared_secret' required="1"
                                readonly="context.get('is_already_instance_created', False)"/>
+                        <field name="customer_so_number"/>
                     </group>
                 </group>
                 <group invisible="context.get('is_calling_from_onboarding_panel', False)">
@@ -79,12 +81,24 @@
                                         <li>
                                             Shopify =&gt; Configurations =&gt; Settings
                                         </li>
+                                        <li>
+                                            If you choose to activate <b>Get Update Notification</b>, Emipro Server will
+                                            ask for details about your Odoo, including Company name, Company email,
+                                            Database UUID, and List of Emipro apps. Therefore, Emipro can inform you of
+                                            any app-related updates and fixes. You can disable this configuration at any time.
+                                            Please check our privacy policy for more detail.
+                                            <a href='https://www.emiprotechnologies.com/iap-privacy-policy'
+                                               target="_blank">
+                                                Click Here
+                                            </a>
+                                        </li>
                                     </ul>
                                 </div>
                             </div>
                         </div>
                     </p>
                 </group>
+
                 <footer>
                     <button string="Create" type="object"
                             name="shopify_test_connection" class="oe_highlight"
@@ -150,6 +164,33 @@
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-12 o_setting_box" id="show_shopify_net_profit_report">
+                                <div class="o_setting_left_pane">
+                                    <field name="show_net_profit_report" widget="upgrade_toggle"/>
+                                </div>
+                                <div class="o_setting_right_pane" name="show_net_profit_report_right_pane">
+                                    <label for="show_net_profit_report"/>
+                                    <div class="text-muted">
+                                        - If you enable this configuration, it will add net profit report for all
+                                        instances
+                                        <br/>
+                                        - If you disable this configuration, it will remove net profit report
+                                        automatically
+                                        <br/>
+                                        - You can find Shopify net profit report from Shopify > Reporting > Net profit
+                                        <br/>
+                                        - The Shopify net profit report calculate based on instance level sets,
+                                        analytics accounts &amp; analytics tags
+                                        <br/>
+                                    </div>
+                                    <button name="download_shopify_net_profit_report_module"
+                                            type="object"
+                                            string="Download Shopify Net Profit Report Module"
+                                            class="oe_link"
+                                            attrs="{'invisible':[('show_net_profit_report','=',False)]}"
+                                            help="Install this module if you are See Net profit report for all Instances."/>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <h2 style="font-size:25px;background-color:#e9ecef;">Shopify Instances</h2>
@@ -183,6 +224,21 @@
                                     <div class="mt16">
                                         <field name="shopify_warehouse_id"
                                                class="o_light_label" widget="selection"
+                                               attrs="{'required':[('shopify_instance_id','!=',False)]}"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="shopify_lang_id" string="Shopify Instance Language"/>
+                                <div class="text-muted">
+                                    Select language based on your Shopify instance
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="shopify_lang_id" class="oe_inline"
+                                               options="{'no_open':True,'no_create':True,'no_create_edit':True}"
                                                attrs="{'required':[('shopify_instance_id','!=',False)]}"/>
                                     </div>
                                 </div>
@@ -415,7 +471,49 @@
                                 </div>
                             </div>
                         </div>
-
+                        <div class="col-xs-12 col-md-6 o_setting_box" groups="analytic.group_analytic_accounting">
+                            <div class="o_setting_right_pane">
+                                <label for="shopify_analytic_account_id" string="Analytic Account"/>
+                                <div class="text-muted">
+                                    Set the Analytic account for shopify orders.
+                                    <li>
+                                        Note : The configuration of the analytic account for this instance will be
+                                        applied to all sales orders created by the connector. With this configuration,
+                                        the Analytic Default Rule configured in Odoo will not apply to Shopify orders
+                                        invoices. If you wish to use Odoo Analytic Default Rule, you will not have to
+                                        configure any analytic account here.
+                                    </li>
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="shopify_analytic_account_id" class="o_light_label"
+                                               options="{'no_create':True,'no_create_edit': True}"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-6 o_setting_box" groups="analytic.group_analytic_tags">
+                            <div class="o_setting_right_pane">
+                                <label for="shopify_analytic_tag_ids" string="Analytic Tags"/>
+                                <div class="text-muted">
+                                    Set the Analytic tags for shopify orders.
+                                    <li>
+                                        Note : The configuration of the analytic tags for this instance will be applied
+                                        to all sales orders created by the connector. With this configuration, the
+                                        Analytic Default Rule configured in Odoo will not apply to Shopify orders
+                                        invoices. If you wish to use Odoo Analytic Default Rule, you will not have to
+                                        configure any analytic tags here.
+                                    </li>
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="shopify_analytic_tag_ids" class="o_light_label"
+                                               widget="many2many_tags"
+                                               options="{'no_create':True,'no_create_edit': True}"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="col-xs-12 col-md-6 o_setting_box">
                             <div class="o_setting_left_pane">
                                 <field name="shopify_is_use_default_sequence" widget="boolean_toggle"
@@ -462,7 +560,68 @@
 
                             </div>
                         </div>
-
+                        <div class="col-xs-12 col-md-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="order_visible_currency" widget="boolean_toggle"
+                                       style="padding-left:25px;"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="order_visible_currency"/>
+                                <div class="text-muted">
+                                    If checked, It will import orders based on the customer's visible currency through
+                                    which the customer has paid the payment for orders.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="is_delivery_fee" widget="boolean_toggle"
+                                       style="padding-left:25px;"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="is_delivery_fee"
+                                       string="Are you selling for Colorado State(US)?"/>
+                                <div class="text-muted">
+                                    If checked, the connector will add a delivery fee line to the order.
+                                    <ul>
+                                        <li>The connector support the Colorado special tax rule during import orders.
+                                        </li>
+                                    </ul>
+                                    For more details,
+                                    <a href="https://help.shopify.com/en/manual/taxes/us/us-tax-reference#colorado" target="_blank">
+                                        click here
+                                    </a>
+                                </div>
+                                <br/>
+                                <div attrs="{'invisible':[('is_delivery_fee','=',False)]}">
+                                    <label for="delivery_fee_name"/>
+                                    <div class="text-muted">
+                                        The name you enter here must match the label on the Shopify order that shows the
+                                        Colorado delivery fees applied.
+                                    </div>
+                                    <div class="content-group">
+                                        <div class="mt16">
+                                            <field name="delivery_fee_name"
+                                                   attrs="{'required':[('is_delivery_fee','=',True)]}"
+                                                   class="o_light_label"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="is_delivery_multi_warehouse" widget="boolean_toggle"
+                                       style="padding-left:25px;"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="is_delivery_multi_warehouse" string="Is Delivery from Multiple warehouse?"/>
+                                <div class="text-muted">
+                                    If checked, It will update order status based on multiple warehouse in Shopify
+                                    store.
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <h2 style="font-size:25px;background-color:#e9ecef;"
@@ -623,6 +782,20 @@
                         </div>
                         <div class="col-xs-12 col-md-6 o_setting_box">
                             <div class="o_setting_right_pane">
+                                <label for="last_cancel_order_import_date"/>
+                                <div class="text-muted">
+                                    Date and time, when the cancel orders are
+                                    imported last time.
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="last_cancel_order_import_date"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-xs-12 col-md-6 o_setting_box">
+                            <div class="o_setting_right_pane">
                                 <label for="shopify_last_date_update_stock"/>
                                 <div class="text-muted">
                                     Date and time, when the products stock are
@@ -764,9 +937,29 @@
                                 <div class="content-group">
                                     <div class="mt16">
                                         <field name="shopify_settlement_report_journal_id" class="o_light_label"
-                                               domain="[('type','in',['cash','bank'])]"
+                                               domain="[('type','in',['cash','bank']),('company_id','=',shopify_company_id)]"
                                                options="{'no_create':True,'no_open':True}"/>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h2 style="font-size:25px;background-color:#e9ecef;"
+                        attrs="{'invisible': [('shopify_instance_id', '=', False)]}">
+                        Shopify Digest
+                    </h2>
+                    <div class="row mt16 o_settings_container"
+                         attrs="{'invisible': [('shopify_instance_id', '=', False)]}">
+                        <div class="col-xs-12 col-md-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="is_shopify_digest" widget="boolean_toggle"
+                                       style="padding-left:25px;"/>
+                            </div>
+
+                            <div class="o_setting_right_pane">
+                                <label for="is_shopify_digest"/>
+                                <div class="text-muted">
+                                    If checked, Then it will send periodic digest per KPI.
                                 </div>
                             </div>
                         </div>

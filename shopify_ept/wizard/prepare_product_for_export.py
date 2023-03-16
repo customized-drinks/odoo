@@ -123,15 +123,19 @@ class PrepareProductForExport(models.TransientModel):
             :param product_template: Record of instance.
             @return: template_vals
             @author: Haresh Mori @Emipro Technologies Pvt. Ltd on date 26 October 2020 .
+            @change : pass lang on context for allow multi lang by Nilam kubavat
+            @Emipro Technologies Pvt. Ltd on date 11 July 2022.
             Task_id: 167537 - Code refactoring
         """
         ir_config_parameter_obj = self.env["ir.config_parameter"]
+        name = product_template.with_context(lang=shopify_instance.shopify_lang_id.code).name
         template_vals = {"product_tmpl_id": product_template.id,
                          "shopify_instance_id": shopify_instance.id,
                          "shopify_product_category": product_template.categ_id.id,
-                         "name": product_template.name}
+                         "name": name}
         if ir_config_parameter_obj.sudo().get_param("shopify_ept.set_sales_description"):
-            template_vals.update({"description": variant.description_sale})
+            description = variant.with_context(lang=shopify_instance.shopify_lang_id.code).description_sale
+            template_vals.update({"description": description})
         return template_vals
 
     def prepare_variant_val_for_export_product_in_layer(self, shopify_instance, shopify_template, variant, sequence):
@@ -279,7 +283,17 @@ class PrepareProductForExport(models.TransientModel):
         """
         shopify_product_image_list = []
         shopify_product_image_obj = self.env["shopify.product.image.ept"]
+        common_product_image_obj = self.env["common.product.image.ept"]
 
+        common_product_images = common_product_image_obj.search(
+            [('template_id', '=', shopify_template.product_tmpl_id.id)])
+        images = common_product_images.filtered(lambda img: img.image == shopify_template.product_tmpl_id.image_1920)
+        if not images and shopify_template.product_tmpl_id.image_1920:
+            common_product_image_obj.create({
+                "name": shopify_template.name,
+                "template_id": shopify_template.product_tmpl_id.id,
+                "image": shopify_template.product_tmpl_id.image_1920,
+            })
         product_template = shopify_template.product_tmpl_id
         for odoo_image in product_template.ept_image_ids.filtered(lambda x: not x.product_id):
             shopify_product_image = shopify_product_image_obj.search_read(
@@ -300,16 +314,27 @@ class PrepareProductForExport(models.TransientModel):
         @author: Maulik Barad on Date 19-Sep-2020.
         """
         shopify_product_image_obj = self.env["shopify.product.image.ept"]
-        product_id = shopify_variant.product_id
-        odoo_image = product_id.ept_image_ids
-        if odoo_image:
+        common_product_image_obj = self.env["common.product.image.ept"]
+
+        common_product_images = common_product_image_obj.search(
+            [('product_id', '=', shopify_variant.product_id.id)])
+        images = common_product_images.filtered(lambda img: img.image == shopify_variant.product_id.image_1920)
+        if not images and shopify_variant.product_id.image_1920:
+            common_product_image_obj.create({
+                "name": shopify_template.name,
+                "template_id": shopify_template.product_tmpl_id.id,
+                "image": shopify_variant.product_id.image_1920,
+                "product_id": shopify_variant.product_id.id,
+            })
+
+        for variant_image in shopify_variant.product_id.ept_image_ids:
             shopify_product_image = shopify_product_image_obj.search_read(
                 [("shopify_template_id", "=", shopify_template.id),
                  ("shopify_variant_id", "=", shopify_variant.id),
-                 ("odoo_image_id", "=", odoo_image[0].id)], ["id"])
+                 ("odoo_image_id", "=", variant_image.id)], ["id"])
             if not shopify_product_image:
                 shopify_product_image_obj.create({
-                    "odoo_image_id": odoo_image[0].id,
+                    "odoo_image_id": variant_image.id,
                     "shopify_variant_id": shopify_variant.id,
                     "shopify_template_id": shopify_template.id,
                     "sequence": 0

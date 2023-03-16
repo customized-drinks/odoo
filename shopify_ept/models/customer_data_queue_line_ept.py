@@ -182,7 +182,8 @@ class ShopifyCustomerDataQueueLineEpt(models.Model):
                     shopify_partner_obj.shopify_create_or_update_address(address, customer_data.get("email"),
                                                                          main_partner, "other")
 
-                line.update({"state": "done", "last_process_date": datetime.now()})
+                line.update(
+                    {"state": "done", "last_process_date": datetime.now(), 'shopify_synced_customer_data': False})
             else:
                 line.update({"state": "failed", "last_process_date": datetime.now()})
             queue.is_process_queue = False

@@ -97,6 +97,9 @@
                             <field name="shopify_warehouse_id" required="1"
                                    readonly="1"/>
                         </group>
+                        <group>
+                            <field name="shopify_lang_id" required="1" attrs="{'readonly':[('active','=',True)]}"/>
+                        </group>
                     </group>
                     <group string="Shopify Site Info">
                         <group>
@@ -236,6 +239,8 @@
                                            options="{'no_quick_create':True,'no_create_edit':True,'no_open': True,}"/>
                                     <field name="tip_product_id"
                                            options="{'no_quick_create':True,'no_create_edit':True,'no_open': True,}"/>
+                                    <field name="duties_product_id"
+                                           options="{'no_quick_create':True,'no_create_edit':True,'no_open': True,}"/>
                                 </group>
                                 <group>
                                     <field name="custom_service_product_id" string="Custom Service Item"
@@ -245,6 +250,17 @@
                                     <field name="refund_adjustment_product_id"
                                            options="{'no_quick_create':True,'no_create_edit':True,'no_open': True,}"/>
 
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Analytic Account &amp; Tags" name="analytic_account_tags"
+                              groups="analytic.group_analytic_accounting,analytic.group_analytic_tags">
+                            <group name="group_analytic_account_tags">
+                                <group groups="analytic.group_analytic_accounting">
+                                    <field name="shopify_analytic_account_id" readonly="1"/>
+                                </group>
+                                <group groups="analytic.group_analytic_tags">
+                                    <field name="shopify_analytic_tag_ids" widget="many2many_tags" readonly="1"/>
                                 </group>
                             </group>
                         </page>

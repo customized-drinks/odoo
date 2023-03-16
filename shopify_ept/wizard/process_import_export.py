@@ -6,10 +6,9 @@ import csv
 import logging
 import time
 import os
-import xlrd
-
 from datetime import datetime, timedelta
 from io import StringIO, BytesIO
+import xlrd
 
 from odoo.exceptions import UserError
 from odoo.tools.misc import split_every
@@ -32,6 +31,7 @@ class ShopifyProcessImportExport(models.TransientModel):
          ("import_customers", "Import Customers"),
          ("import_unshipped_orders", "Import Unshipped Orders"),
          ("import_shipped_orders", "Import Shipped Orders"),
+         ("import_cancel_orders", "Import Cancel Orders"),
          ("import_orders_by_remote_ids", "Import Orders - By Remote Ids"),
          ("update_order_status", "Update Order Shipping Status"),
          ("export_stock", "Export Stock"),
@@ -87,6 +87,7 @@ class ShopifyProcessImportExport(models.TransientModel):
     def shopify_execute(self):
         """This method used to execute the operation as per given in wizard.
             @author: Haresh Mori @Emipro Technologies Pvt. Ltd on date 25/10/2019.
+            @change : add import cancel order by Nilam kubavat @Emipro Technologies Pvt. Ltd on date 11 July 2022.
         """
         product_data_queue_obj = self.env["shopify.product.data.queue.ept"]
         order_date_queue_obj = self.env["shopify.order.data.queue.ept"]
@@ -107,14 +108,19 @@ class ShopifyProcessImportExport(models.TransientModel):
                 instance, skip_existing_product=self.skip_existing_product, template_ids=self.shopify_template_ids)
             if product_queue_ids:
                 queue_ids = product_queue_ids
-                product_data_queue = product_data_queue_obj.browse(queue_ids)
-                product_data_queue.product_data_queue_lines.process_product_queue_line_data()
-                _logger.info("Processed product queue : %s of Instance : %s Via Product Template ids Successfully .",
-                             product_data_queue.name, instance.name)
-                if not product_data_queue.product_data_queue_lines:
-                    product_data_queue.unlink()
                 action_name = "shopify_ept.action_shopify_product_data_queue"
                 form_view_name = "shopify_ept.product_synced_data_form_view_ept"
+
+            # if product_queue_ids:
+            #     queue_ids = product_queue_ids
+            #     product_data_queue = product_data_queue_obj.browse(queue_ids)
+            #     product_data_queue.product_data_queue_lines.process_product_queue_line_data()
+            #     _logger.info("Processed product queue : %s of Instance : %s Via Product Template ids Successfully .",
+            #                  product_data_queue.name, instance.name)
+            #     if not product_data_queue.product_data_queue_lines:
+            #         product_data_queue.unlink()
+            #     action_name = "shopify_ept.action_shopify_product_data_queue"
+            #     form_view_name = "shopify_ept.product_synced_data_form_view_ept"
 
         elif self.shopify_operation == "import_customers":
             customer_queues = self.sync_shopify_customers()
@@ -138,11 +144,20 @@ class ShopifyProcessImportExport(models.TransientModel):
                 action_name = "shopify_ept.action_shopify_order_data_queue_ept"
                 form_view_name = "shopify_ept.view_shopify_order_data_queue_ept_form"
 
+        elif self.shopify_operation == "import_cancel_orders":
+            sale_order_obj = self.env["sale.order"]
+            sale_order_obj.import_shopify_cancel_order(instance, self.orders_from_date, self.orders_to_date)
+
         elif self.shopify_operation == "import_orders_by_remote_ids":
             order_date_queue_obj.import_order_process_by_remote_ids(instance, self.shopify_order_ids)
 
         elif self.shopify_operation == "export_stock":
-            self.update_stock_in_shopify()
+            # self.update_stock_in_shopify()
+            exprot_stock_queue_id = self.shopify_export_stock_queue(ctx={})
+            if exprot_stock_queue_id:
+                queue_ids = exprot_stock_queue_id.ids
+                action_name = "shopify_ept.action_shopify_export_stock_queue"
+                form_view_name = "shopify_ept.export_stock_form_view_ept"
 
         elif self.shopify_operation == "import_stock":
             inventory_records = self.import_stock_in_odoo()
@@ -383,6 +398,22 @@ class ShopifyProcessImportExport(models.TransientModel):
                 break
         return customer_queue_list
 
+    def import_cancel_order_cron_action(self, ctx=False):
+        """This method is used to import cancel orders from the auto-import cron job.
+        @author : Nilam kubavat @Emipro Technologies Pvt. Ltd on date 11 July 2022.
+        """
+        sale_order_obj = self.env["sale.order"]
+        if not isinstance(ctx, dict):
+            return True
+        instance_id = ctx.get('shopify_instance_id')
+        instance = self.env['shopify.instance.ept'].browse(instance_id)
+        from_date = instance.last_cancel_order_import_date
+        to_date = datetime.now()
+        if not from_date:
+            from_date = to_date - timedelta(3)
+        sale_order_obj.import_shopify_cancel_order(instance, from_date, to_date)
+        return True
+
     @api.model
     def update_stock_in_shopify(self, ctx={}):
         """
@@ -416,10 +447,47 @@ class ShopifyProcessImportExport(models.TransientModel):
             if shopify_products:
                 instance.write({'shopify_last_date_update_stock': shopify_products[0].last_stock_update_date})
         else:
-            instance.shopify_last_date_update_stock = datetime.now()
             _logger.info("No products found to export stock from %s.....", last_update_date)
 
         return True
+
+    @api.model
+    def shopify_export_stock_queue(self, ctx=False):
+        """
+        This method used to export stock from odoo to shopify.
+        """
+        shopify_instance_obj = self.env['shopify.instance.ept']
+        product_obj = self.env['product.product']
+        shopify_product_obj = self.env['shopify.product.product.ept']
+
+        if self.shopify_instance_id:
+            instance = self.shopify_instance_id
+        elif ctx.get('shopify_instance_id'):
+            instance_id = ctx.get('shopify_instance_id')
+            instance = shopify_instance_obj.browse(instance_id)
+
+        if not instance:
+            raise UserError(_("Shopify instance not found.\nPlease select one, if you are processing from Operations"
+                              " wizard.\nOtherwise please check the code of cron, if it has been modified."))
+
+        if self.export_stock_from:
+            last_update_date = self.export_stock_from
+            _logger.info("Exporting Stock from Operations wizard for instance - %s", instance.name)
+        else:
+            last_update_date = instance.shopify_last_date_update_stock or datetime.now() - timedelta(30)
+            _logger.info("Exporting Stock by Cron for instance - %s", instance.name)
+
+        products = product_obj.get_products_based_on_movement_date_ept(last_update_date,
+                                                                       instance.shopify_company_id)
+        if products:
+            export_stock_queue = shopify_product_obj.export_stock_queue(instance, products)
+            if export_stock_queue:
+                return export_stock_queue
+        else:
+            instance.shopify_last_date_update_stock = datetime.now()
+            _logger.info("No products found to export stock from %s.....", last_update_date)
+
+        return False
 
     def shopify_selective_product_stock_export(self):
         """
@@ -428,15 +496,39 @@ class ShopifyProcessImportExport(models.TransientModel):
         """
         shopify_product_obj = self.env['shopify.product.product.ept']
         shopify_template_ids = self._context.get('active_ids')
-
+        export_stock_data_obj = self.env['shopify.export.stock.queue.ept']
         shopify_instances = self.env['shopify.instance.ept'].search([])
         for instance in shopify_instances:
             shopify_products = shopify_product_obj.search([('shopify_instance_id', '=', instance.id),
                                                            ('shopify_template_id', 'in', shopify_template_ids)])
             odoo_product_ids = shopify_products.product_id.ids
             if odoo_product_ids:
-                shopify_product_obj.with_context(is_process_from_selected_product=True).export_stock_in_shopify(
-                    instance, odoo_product_ids)
+                # shopify_product_obj.with_context(is_process_from_selected_product=True).export_stock_in_shopify(
+                #     instance, odoo_product_ids)
+                export_stock_queue_id = shopify_product_obj.with_context(
+                    is_process_from_selected_product=True).export_stock_queue(instance, odoo_product_ids)
+                if export_stock_queue_id:
+                    queue_ids = export_stock_queue_id.ids
+                    export_stock_data_queue = export_stock_data_obj.browse(queue_ids)
+                    export_stock_data_queue.export_stock_queue_line_ids.process_export_stock_queue_data()
+                    _logger.info(
+                        "Processed export stock queue : %s of Instance : %s Via Selective Successfully .",
+                        export_stock_data_queue.name, instance.name)
+                    if not export_stock_data_queue.export_stock_queue_line_ids:
+                        export_stock_data_queue.unlink()
+                    action_name = "shopify_ept.action_shopify_export_stock_queue"
+                    form_view_name = "shopify_ept.export_stock_form_view_ept"
+                    if queue_ids and action_name and form_view_name:
+                        action = self.env.ref(action_name).sudo().read()[0]
+                        form_view = self.sudo().env.ref(form_view_name)
+
+                        if len(queue_ids) == 1:
+                            action.update({"view_id": (form_view.id, form_view.name), "res_id": queue_ids[0],
+                                           "views": [(form_view.id, "form")]})
+                        else:
+                            action["domain"] = [("id", "in", queue_ids)]
+                        return action
+
         return True
 
     def import_stock_in_odoo(self):
@@ -493,6 +585,9 @@ class ShopifyProcessImportExport(models.TransientModel):
                 self.shopify_check_running_schedulers('ir_cron_shopify_auto_import_order_instance_')
             elif self.shopify_operation == "import_shipped_orders":
                 self.orders_from_date = instance.last_shipped_order_import_date or False
+            elif self.shopify_operation == "import_cancel_orders":
+                self.orders_from_date = instance.last_cancel_order_import_date or False
+                self.shopify_check_running_schedulers('ir_cron_shopify_auto_import_cancel_order_instance_')
             elif self.shopify_operation == "sync_product":
                 self.orders_from_date = instance.shopify_last_date_product_import or False
             elif self.shopify_operation == 'update_order_status':

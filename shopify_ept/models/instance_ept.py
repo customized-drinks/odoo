@@ -106,6 +106,16 @@ class ShopifyInstanceEpt(models.Model):
         return tip_product
 
     @api.model
+    def _default_duties_product(self):
+        """
+        This method is used to set the duties product in an instance.
+        @author: Meera Sidapara on Date 27-06-2022
+        @Task_id : 193941
+        """
+        duties_product = self.env.ref('shopify_ept.shopify_duties_product', False)
+        return duties_product
+
+    @api.model
     def _default_order_status(self):
         """ Return default status of shopify order, for importing the particular orders having this status.
             @author: Haresh Mori @Emipro Technologies Pvt. Ltd on date 30 December 2020 .
@@ -126,7 +136,8 @@ class ShopifyInstanceEpt(models.Model):
         """ It is used to set after order date which has already created an instance.
             @author: Haresh Mori @Emipro Technologies Pvt. Ltd on date 15 March 2021.
             Task_id: 171920 - Order Import after date
-            Added code to set the custom products in the instance as per the task: 172908 - Custom order line Ticket number 06662
+            Added code to set the custom products in the instance as per the
+            task: 172908 - Custom order line Ticket number 06662
         """
         sale_order_obj = self.env["sale.order"]
         instances = self.search([])
@@ -147,6 +158,16 @@ class ShopifyInstanceEpt(models.Model):
                 instance.write({'custom_service_product_id': service_product_id.id,
                                 'custom_storable_product_id': storable_product_id.id})
         return order_after_date
+
+    @api.model
+    def _get_default_language(self):
+        """
+        This method use get default language base on user
+        @author : Nilam kubavat @Emipro Technologies Pvt. Ltd on date 11 July 2022.
+        """
+        lang_code = self.env.user.lang
+        language = self.env["res.lang"].search([('code', '=', lang_code)])
+        return language.id if language else False
 
     name = fields.Char(size=120, required=True)
     shopify_company_id = fields.Many2one('res.company', string='Company', required=True,
@@ -256,6 +277,8 @@ class ShopifyInstanceEpt(models.Model):
     payout_last_import_date = fields.Date(string="Last Date of Payout Import")
     last_shipped_order_import_date = fields.Datetime(string="Last Date Of Shipped Order Import",
                                                      help="Last date of sync orders from Shopify to Odoo")
+    last_cancel_order_import_date = fields.Datetime(string="Last Date Of Cancel Order Import",
+                                                    help="Last date of sync orders from Shopify to Odoo")
     is_instance_create_from_onboarding_panel = fields.Boolean(default=False)
     is_onboarding_configurations_done = fields.Boolean(default=False)
     shipping_product_id = fields.Many2one("product.product", domain=[('type', '=', 'service')],
@@ -267,7 +290,8 @@ class ShopifyInstanceEpt(models.Model):
                                                 'instance_id', 'status_id',
                                                 "Shopify Import Order Status",
                                                 default=_default_order_status,
-                                                help="Select order status in which you want to import the orders from Shopify to Odoo.")
+                                                help="Select order status in which you want to "
+                                                     "import the orders from Shopify to Odoo.")
     gift_card_product_id = fields.Many2one("product.product", domain=[('type', '=', 'service')],
                                            default=_default_gift_card_product,
                                            help="This is used to manage the gift card in sale order")
@@ -298,6 +322,29 @@ class ShopifyInstanceEpt(models.Model):
                                      domain=[('type', '=', 'service')],
                                      default=_default_tip_product,
                                      help="This is used for set Tip product in a sale order lines")
+
+    # Analytic
+    shopify_analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account',
+                                                  domain="['|', ('company_id', '=', False), "
+                                                         "('company_id', '=', shopify_company_id)]")
+    shopify_analytic_tag_ids = fields.Many2many('account.analytic.tag', string='Analytic Tags',
+                                                domain="['|', ('company_id', '=', False), "
+                                                       "('company_id', '=', shopify_company_id)]")
+
+    # presentment currency
+    order_visible_currency = fields.Boolean(string="Import order in customer visible currency?")
+
+    duties_product_id = fields.Many2one("product.product", "Duties",
+                                        domain=[('type', '=', 'service')],
+                                        default=_default_duties_product,
+                                        help="This is used for set duties product in a sale order lines")
+    shopify_lang_id = fields.Many2one('res.lang', string='Language', default=_get_default_language)
+    is_delivery_fee = fields.Boolean(string='Are you selling for Colorado State(US)')
+    delivery_fee_name = fields.Char(string='Delivery fee name')
+
+    is_shopify_digest = fields.Boolean(string="Set Shopify Digest?")
+
+    is_delivery_multi_warehouse = fields.Boolean(string="Is Delivery from Multiple warehouse?")
 
     _sql_constraints = [('unique_host', 'unique(shopify_host)',
                          "Instance already exists for given host. Host must be Unique for the instance!")]
@@ -539,7 +586,7 @@ class ShopifyInstanceEpt(models.Model):
                       self.id
 
         def orders_of_current_week(order_query):
-            qry = order_query + """ and date(date_order) >= (select date_trunc('week', date(current_date))) order by 
+            qry = order_query + """ and date(date_order) >= (select date_trunc('week', date(current_date))) order by
             date(date_order)"""
             self._cr.execute(qry)
             return self._cr.dictfetchall()
@@ -854,9 +901,9 @@ class ShopifyInstanceEpt(models.Model):
         """
         shop = host.split("//")
         if len(shop) == 2:
-            shop_url = shop[0] + "//" + api_key + ":" + password + "@" + shop[1] + "/admin/api/2022-01"
+            shop_url = shop[0] + "//" + api_key + ":" + password + "@" + shop[1] + "/admin/api/2023-01"
         else:
-            shop_url = "https://" + api_key + ":" + password + "@" + shop[0] + "/admin/api/2022-01"
+            shop_url = "https://" + api_key + ":" + password + "@" + shop[0] + "/admin/api/2023-01"
 
         return shop_url
 

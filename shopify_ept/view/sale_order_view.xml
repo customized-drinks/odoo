@@ -63,7 +63,7 @@
         </field>
     </record>
 
-    <!--Inherit Form view of shopify shopify sale order -->
+    <!--Inherit Form view of shopify sale order -->
     <record id="view_order_form" model="ir.ui.view">
         <field name="name">sale.order.form.inherit</field>
         <field name="model">sale.order</field>
@@ -71,12 +71,24 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <data>
+                <xpath expr="//page[@name='order_lines']/field[@name='order_line']/tree/field[@name='warehouse_id_ept']"
+                       position="attributes">
+                    <attribute name="invisible">0</attribute>
+                    <attribute name="optional">hide</attribute>
+                </xpath>
                 <notebook position="inside">
                     <page string="Shopify Info" name="shopify_ept"
                           attrs="{'invisible':[('shopify_instance_id','=',False)]}">
                         <group>
                             <group>
-                                <field name="shopify_order_id" readonly="True"/>
+                                <label for="shopify_order_id"/>
+                                <div name="shopify_order_link">
+                                    <field name="shopify_order_id" readonly="True"/>
+                                    <button name="action_order_ref_redirect"
+                                            type="object"
+                                            icon="fa-external-link ">
+                                    </button>
+                                </div>
                                 <field name="shopify_order_number" readonly="True"/>
                                 <field name="shopify_payment_gateway_id" readonly="True"/>
                                 <field name="shopify_instance_id" readonly="True"

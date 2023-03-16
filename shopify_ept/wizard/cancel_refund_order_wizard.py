@@ -2,7 +2,7 @@
 # See LICENSE file for full copyright and licensing details.
 
 import json
-from odoo import models, fields, api, _
+from odoo import models, fields, _
 from odoo.exceptions import UserError
 from .. import shopify
 
@@ -37,7 +37,6 @@ class ShopifyCancelRefundOrderWizard(models.TransientModel):
              "delivered,and will be returned to the merchant.The returned quantity will be added back to the available "
              "count")
     payment_ids = fields.Many2many('shopify.order.payment.ept', 'shopify_payment_refund_rel', string="Payments")
-
 
     def cancel_in_shopify(self):
         """This method used to cancel order in shopify store.
@@ -92,8 +91,8 @@ class ShopifyCancelRefundOrderWizard(models.TransientModel):
             @author: Haresh Mori @Emipro Technologies Pvt. Ltd on date 20/11/2019.
             Task Id : 157911
         """
-        moves = order_id.invoice_ids.filtered(lambda m: m.move_type == 'out_invoice' and m.payment_state in ['paid',
-                                                                                                             'in_payment'])
+        moves = order_id.invoice_ids.filtered(
+            lambda m: m.move_type == 'out_invoice' and m.payment_state in ['paid', 'in_payment'])
         if not moves:
             # Here we add commit because we need to write values in sale order before warring
             # raise. if raise warring it will not commit so we need to write commit.
@@ -255,7 +254,7 @@ class ShopifyCancelRefundOrderWizard(models.TransientModel):
                     log_message, model_id, False, False)
                 mismatch_logline.append(log_line.id)
                 continue
-            credit_note_id.write({'is_refund_in_shopify': True})
+            credit_note_id.write({'is_refund_in_shopify': True, 'shopify_refund_id': result.id if result else False})
 
         return mismatch_logline
 
@@ -299,7 +298,7 @@ class ShopifyCancelRefundOrderWizard(models.TransientModel):
         if multi_payments:
             transactions = []
             for order_payment in multi_payments.filtered(
-                lambda payment_gateway: payment_gateway.is_want_to_refund == True):
+                    lambda payment_gateway: payment_gateway.is_want_to_refund == True):
                 parent_id = int(order_payment.payment_transaction_id)
                 transaction = self.preapre_refund_transaction_vals(parent_id, order_payment.refund_amount,
                                                                    order_payment.payment_gateway_id.code)
@@ -318,7 +317,8 @@ class ShopifyCancelRefundOrderWizard(models.TransientModel):
                 "note": note,
                 "order_id": order.shopify_order_id,
                 "refund_line_items": refund_lines_list,
-                "transactions": transactions
+                "transactions": transactions,
+                "currency": order.currency_id.name,
                 }
         return vals
 

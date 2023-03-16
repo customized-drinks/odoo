@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # See LICENSE file for full copyright and licensing details.
-
-from odoo import models, fields, api, _
+from odoo import models, fields, api, _, SUPERUSER_ID
 from odoo.exceptions import UserError
 from .. import shopify
 
@@ -22,6 +21,18 @@ class ShopifyInstanceConfig(models.TransientModel):
                                help="Add your shopify store URL, for example, https://my-shopify-store.myshopify.com")
     shopify_company_id = fields.Many2one("res.company", string="Instance Company",
                                          help="Orders and Invoices will be generated of this company.")
+    update_notification = fields.Boolean(string="Get Update Notification?",
+                                         help="If Enable, then You will be notify for the latest "
+                                              "version app.")
+    customer_so_number = fields.Char("App Order Number", help="Your App Purchase Registered Number")
+
+    @api.model
+    def default_get(self, fields):
+        res = super(ShopifyInstanceConfig, self).default_get(fields)
+        is_notify, customer_so_number = self.env['res.config.settings'].get_in_app_system_parameter()
+        res['update_notification'] = is_notify
+        res['customer_so_number'] = customer_so_number
+        return res
 
     def create_pricelist(self, shop_currency):
         """
@@ -84,6 +95,10 @@ class ShopifyInstanceConfig(models.TransientModel):
         vals = self.prepare_val_for_instance_creation(shop_detail)
 
         shopify_instance = instance_obj.create(vals)
+        if shopify_instance and self.update_notification:
+            config_setting = self.env['res.config.settings']
+            config_setting.update_system_param(self.update_notification, self.customer_so_number)
+            config_setting.enable_emipro_notification(self.update_notification)
         shopify_location_obj.import_shopify_locations(shopify_instance)
 
         payment_gateway_obj.import_payment_gateway(shopify_instance)
@@ -127,7 +142,7 @@ class ShopifyInstanceConfig(models.TransientModel):
             "shopify_store_time_zone": shop_detail.get("iana_timezone"),
             "shopify_pricelist_id": pricelist_id or False,
             "apply_tax_in_order": "create_shopify_tax",
-            "shopify_stock_field": stock_field and stock_field.id or False
+            "shopify_stock_field": stock_field and stock_field.id or False,
         }
         return vals
 
@@ -244,6 +259,8 @@ class ResConfigSettings(models.TransientModel):
                                              help="Last date of sync orders from Shopify to Odoo")
     last_shipped_order_import_date = fields.Datetime(string="Import Shipped Order",
                                                      help="Last date of sync shipped orders from Shopify to Odoo")
+    last_cancel_order_import_date = fields.Datetime(string="Import Cancel Orders",
+                                                    help="Last date of sync shipped orders from Shopify to Odoo")
     shopify_last_date_customer_import = fields.Datetime(string="Import Customer",
                                                         help="it is used to store last import customer date")
     shopify_last_date_update_stock = fields.Datetime(string="Update Stock",
@@ -274,6 +291,26 @@ class ResConfigSettings(models.TransientModel):
 
     shopify_import_order_after_date = fields.Datetime(
         help="Connector only imports those orders which have created after a given date.")
+
+    # Analytic
+    shopify_analytic_account_id = fields.Many2one('account.analytic.account', string='Shopify Analytic Account',
+                                                  domain="['|', ('company_id', '=', False), "
+                                                         "('company_id', '=', shopify_company_id)]")
+    shopify_analytic_tag_ids = fields.Many2many('account.analytic.tag', 'shopify_res_config_analytic_account_tag_rel',
+                                                string='Shopify Analytic Tags',
+                                                domain="['|', ('company_id', '=', False), "
+                                                       "('company_id', '=', shopify_company_id)]")
+
+    # presentment currency
+    order_visible_currency = fields.Boolean(string="Import order in customer visible currency?")
+    shopify_lang_id = fields.Many2one('res.lang', string='Shopify Instance Language',
+                                      help="Select language for Shopify customer.")
+    is_delivery_fee = fields.Boolean(string='Are you selling for Colorado State(US)')
+    delivery_fee_name = fields.Char(string='Delivery fee name')
+    show_net_profit_report = fields.Boolean(string='Net Profit Report',
+                                            config_parameter="shopify_ept.show_net_profit_report")
+    is_shopify_digest = fields.Boolean(string="Send Periodic Digest?")
+    is_delivery_multi_warehouse = fields.Boolean(string="Is Delivery from Multiple warehouse?")
 
     @api.onchange("shopify_instance_id")
     def onchange_shopify_instance_id(self):
@@ -306,6 +343,7 @@ class ResConfigSettings(models.TransientModel):
             self.shopify_default_pos_customer_id = instance.shopify_default_pos_customer_id
             self.last_date_order_import = instance.last_date_order_import or False
             self.last_shipped_order_import_date = instance.last_shipped_order_import_date or False
+            self.last_cancel_order_import_date = instance.last_cancel_order_import_date or False
             self.shopify_last_date_customer_import = instance.shopify_last_date_customer_import or False
             self.shopify_last_date_update_stock = instance.shopify_last_date_update_stock or False
             self.shopify_last_date_product_import = instance.shopify_last_date_product_import or False
@@ -314,6 +352,14 @@ class ResConfigSettings(models.TransientModel):
             self.shopify_order_status_ids = instance.shopify_order_status_ids.ids
             self.auto_fulfill_gift_card_order = instance.auto_fulfill_gift_card_order
             self.shopify_import_order_after_date = instance.import_order_after_date or False
+            self.shopify_analytic_account_id = instance.shopify_analytic_account_id.id or False
+            self.shopify_analytic_tag_ids = instance.shopify_analytic_tag_ids.ids
+            self.order_visible_currency = instance.order_visible_currency or False
+            self.shopify_lang_id = instance.shopify_lang_id and instance.shopify_lang_id.id or False
+            self.is_delivery_fee = instance.is_delivery_fee or False
+            self.delivery_fee_name = instance.delivery_fee_name
+            self.is_shopify_digest = instance.is_shopify_digest or False
+            self.is_delivery_multi_warehouse = instance.is_delivery_multi_warehouse or False
 
     def execute(self):
         """This method used to set value in an instance of configuration.
@@ -323,6 +369,8 @@ class ResConfigSettings(models.TransientModel):
         instance = self.shopify_instance_id
         values = {}
         res = super(ResConfigSettings, self).execute()
+        IrModule = self.env['ir.module.module']
+        exist_module = IrModule.search([('name', '=', 'shopify_net_profit_report_ept'), ('state', '=', 'installed')])
         if instance:
             # values["shopify_company_id"] = self.shopify_company_id and self.shopify_company_id.id or False
             values["shopify_warehouse_id"] = self.shopify_warehouse_id and self.shopify_warehouse_id.id or False
@@ -351,6 +399,7 @@ class ResConfigSettings(models.TransientModel):
             values["shopify_default_pos_customer_id"] = self.shopify_default_pos_customer_id.id
             values["last_date_order_import"] = self.last_date_order_import
             values["last_shipped_order_import_date"] = self.last_shipped_order_import_date
+            values["last_cancel_order_import_date"] = self.last_cancel_order_import_date
             values["shopify_last_date_customer_import"] = self.shopify_last_date_customer_import
             values["shopify_last_date_update_stock"] = self.shopify_last_date_update_stock
             values["shopify_last_date_product_import"] = self.shopify_last_date_product_import
@@ -359,6 +408,15 @@ class ResConfigSettings(models.TransientModel):
             values['shopify_order_status_ids'] = [(6, 0, self.shopify_order_status_ids.ids)]
             values["auto_fulfill_gift_card_order"] = self.auto_fulfill_gift_card_order
             values["import_order_after_date"] = self.shopify_import_order_after_date
+            values["shopify_analytic_account_id"] = self.shopify_analytic_account_id and \
+                                                    self.shopify_analytic_account_id.id or False
+            values["shopify_analytic_tag_ids"] = [(6, 0, self.shopify_analytic_tag_ids.ids)]
+            values['order_visible_currency'] = self.order_visible_currency or False
+            values['shopify_lang_id'] = self.shopify_lang_id and self.shopify_lang_id.id or False
+            values["is_delivery_fee"] = self.is_delivery_fee
+            values["delivery_fee_name"] = self.delivery_fee_name
+            values['is_shopify_digest'] = self.is_shopify_digest or False
+            values["is_delivery_multi_warehouse"] = self.is_delivery_multi_warehouse or False
 
             product_webhook_changed = customer_webhook_changed = order_webhook_changed = False
             if instance.create_shopify_products_webhook != self.create_shopify_products_webhook:
@@ -376,7 +434,75 @@ class ResConfigSettings(models.TransientModel):
             if order_webhook_changed:
                 instance.configure_shopify_order_webhook()
 
+        if not self.show_net_profit_report and exist_module:
+            exist_module.with_user(SUPERUSER_ID).button_immediate_uninstall()
         return res
+
+    def download_shopify_net_profit_report_module(self):
+        """
+        This Method relocates download zip file of Shopify Net Profit Report module.
+        @return: This Method return file download file.
+        @author: Meera Sidapara @Emipro Technologies Pvt. Ltd on date 08 August 2022.
+        """
+        attachment = self.env['ir.attachment'].search(
+            [('name', '=', 'shopify_net_profit_report_ept.zip')])
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/web/content/%s?download=true' % attachment.id,
+            'target': 'new',
+            'nodestroy': False,
+        }
+
+    @api.onchange("is_shopify_digest")
+    def onchange_is_shopify_digest(self):
+        """
+        This method is used to create digest record based on Shopify instance.
+        @author: Meera Sidapara on date 13-July-2022.
+        @task: 194458 - Digest email development
+        """
+        try:
+            digest_exist = self.env.ref('shopify_ept.digest_shopify_instance_%d' % self.shopify_instance_id.id)
+        except:
+            digest_exist = False
+        if self.is_shopify_digest:
+            shopify_cron = self.env['shopify.cron.configuration.ept']
+            vals = self.prepare_val_for_digest()
+            if digest_exist:
+                vals.update({'name': digest_exist.name})
+                digest_exist.write(vals)
+            else:
+                core_record = shopify_cron.check_core_shopify_cron(
+                    "common_connector_library.connector_digest_digest_default")
+
+                new_instance_digest = core_record.copy(default=vals)
+                name = 'digest_shopify_instance_%d' % (self.shopify_instance_id.id)
+                self.create_digest_data(name, new_instance_digest)
+        else:
+            if digest_exist:
+                digest_exist.write({'state': 'deactivated'})
+
+    def prepare_val_for_digest(self):
+        """ This method is used to prepare a vals for the digest configuration.
+            @author: Meera Sidapara @Emipro Technologies Pvt. Ltd on date 13 July 2022.
+            Task_id: 194458 - Digest email development
+        """
+        vals = {'state': 'activated',
+                'name': 'Shopify : ' + self.shopify_instance_id.name + ' Periodic Digest',
+                'module_name': 'shopify_ept',
+                'shopify_instance_id': self.shopify_instance_id.id,
+                'company_id': self.shopify_instance_id.shopify_company_id.id}
+        return vals
+
+    def create_digest_data(self, name, new_instance_digest):
+        """ This method is used to create a digest record of ir model data
+            @author: Meera Sidapara @Emipro Technologies Pvt. Ltd on date 13 July 2022.
+            Task_id: 194458 - Digest email development
+        """
+        self.env['ir.model.data'].create({'module': 'shopify_ept',
+                                          'name': name,
+                                          'model': 'digest.digest',
+                                          'res_id': new_instance_digest.id,
+                                          'noupdate': True})
 
     @api.model
     def action_shopify_open_basic_configuration_wizard(self):
@@ -451,6 +577,9 @@ class ResConfigSettings(models.TransientModel):
                 'credit_tax_account_id': self.shopify_credit_tax_account_id and
                                          self.shopify_credit_tax_account_id.id or False,
                 'import_order_after_date': self.shopify_import_order_after_date,
+                'shopify_analytic_account_id': self.shopify_analytic_account_id.id or False,
+                'shopify_analytic_tag_ids': self.shopify_analytic_tag_ids.ids or False,
+                'shopify_lang_id': self.shopify_lang_id and self.shopify_lang_id.id or False,
             }
 
             instance.write(basic_configuration_dict)

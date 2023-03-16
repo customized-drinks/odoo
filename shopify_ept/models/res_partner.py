@@ -108,3 +108,16 @@ class ResPartner(models.Model):
             res_partner = res_partner.parent_id
 
         return res_partner
+
+    def create_or_search_tag(self, tag):
+        """
+        This method use for search existing tag
+        @author : Nilam kubavat @Emipro Technologies Pvt. Ltd on date 11 July 2022.
+        """
+        res_partner_category_obj = self.env['res.partner.category']
+
+        exists_tag = res_partner_category_obj.search([('name', '=ilike', tag)], limit=1)
+
+        if not exists_tag:
+            exists_tag = res_partner_category_obj.sudo().create({'name': tag})
+        return exists_tag.id

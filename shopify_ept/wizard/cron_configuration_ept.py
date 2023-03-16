@@ -60,8 +60,8 @@ class ShopifyCronConfigurationEpt(models.TransientModel):
 
     # Auto cron for Import Shipped Order
     shopify_shipped_order_auto_import = fields.Boolean('Import Shipped Order', default=False,
-                                                       help="Check if you want to automatically Import Shipped Orders from Shopify to"
-                                                            " Odoo.")
+                                                       help="Check if you want to automatically Import "
+                                                            "Shipped Orders from Shopify to Odoo.")
     shopify_import_shipped_order_interval_number = fields.Integer('Interval Number for Import Shipped Order',
                                                                   help="Repeat every x.")
     shopify_import_shipped_order_interval_type = fields.Selection([('minutes', 'Minutes'), ('hours', 'Hours'),
@@ -73,6 +73,22 @@ class ShopifyCronConfigurationEpt(models.TransientModel):
     shopify_import_shipped_order_user_id = fields.Many2one('res.users', string="User for Import Shipped Order",
                                                            help='User for Import Shipped Order',
                                                            default=lambda self: self.env.user)
+
+    # Auto cron for Import Cancel Order
+    shopify_cancel_order_auto_import = fields.Boolean('Import Cancel Order', default=False,
+                                                      help="Check if you want to automatically Import Cancel"
+                                                           " Orders from Shopify to Odoo.")
+    shopify_import_cancel_order_interval_number = fields.Integer('Interval Number for Import Cancel Order',
+                                                                 help="Repeat every x.")
+    shopify_import_cancel_order_interval_type = fields.Selection([('minutes', 'Minutes'), ('hours', 'Hours'),
+                                                                  ('days', 'Days'), ('weeks', 'Weeks'),
+                                                                  ('months', 'Months')],
+                                                                 'Interval Unit for Import Cancel Order')
+    shopify_import_cancel_order_next_execution = fields.Datetime('Next Execution for Import Cancel Order',
+                                                                 help='Next Execution for Import Cancel Order')
+    shopify_import_cancel_order_user_id = fields.Many2one('res.users', string="User for Import Cancel Order",
+                                                          help='User for Import Shipped Order',
+                                                          default=lambda self: self.env.user)
 
     # Auto cron for Update Order Shipping Status
     shopify_order_status_auto_update = fields.Boolean('Update Order Shipping Status', default=False,
@@ -118,6 +134,8 @@ class ShopifyCronConfigurationEpt(models.TransientModel):
                 is_zero = True
             if record.shopify_shipped_order_auto_import and record.shopify_import_shipped_order_interval_number <= 0:
                 is_zero = True
+            if record.shopify_cancel_order_auto_import and record.shopify_import_cancel_order_interval_number <= 0:
+                is_zero = True
             if record.shopify_order_status_auto_update and record.shopify_order_status_interval_number <= 0:
                 is_zero = True
             if record.shopify_auto_import_payout_report and record.shopify_payout_import_interval_number <= 0:
@@ -136,6 +154,7 @@ class ShopifyCronConfigurationEpt(models.TransientModel):
         self.update_export_stock_cron_field(instance)
         self.update_import_order_cron_field(instance)
         self.import_shipped_order_cron_field(instance)
+        self.import_cancel_order_cron_field(instance)
         self.update_order_status_cron_field(instance)
         self.update_payout_report_cron_field(instance)
 
@@ -177,7 +196,8 @@ class ShopifyCronConfigurationEpt(models.TransientModel):
 
     def import_shipped_order_cron_field(self, instance):
         """
-        Set import shipped order cron fields value while open the wizard for cron configuration from the instance form view.
+        Set import shipped order cron fields value while open the wizard for cron configuration
+        from the instance form view.
         @author: Meera Sidapara @Emipro Technologies Pvt. Ltd on date 08/11/2021.
         """
         try:
@@ -191,6 +211,24 @@ class ShopifyCronConfigurationEpt(models.TransientModel):
             self.shopify_import_shipped_order_interval_type = import_shipped_order_cron_exist.interval_type or False
             self.shopify_import_shipped_order_next_execution = import_shipped_order_cron_exist.nextcall or False
             self.shopify_import_shipped_order_user_id = import_shipped_order_cron_exist.user_id.id or False
+
+    def import_cancel_order_cron_field(self, instance):
+        """
+        Set import cancel order cron fields value while open the wizard for cron configuration
+        from the instance form view.
+        @author: Nilam kubavat @Emipro Technologies Pvt. Ltd on date 11 July 2022.
+        """
+        try:
+            import_cancel_order_cron_exist = instance and self.env.ref(
+                'shopify_ept.ir_cron_shopify_auto_import_cancel_order_instance_%d' % instance.id)
+        except:
+            import_cancel_order_cron_exist = False
+        if import_cancel_order_cron_exist:
+            self.shopify_cancel_order_auto_import = import_cancel_order_cron_exist.active or False
+            self.shopify_import_cancel_order_interval_number = import_cancel_order_cron_exist.interval_number or False
+            self.shopify_import_cancel_order_interval_type = import_cancel_order_cron_exist.interval_type or False
+            self.shopify_import_cancel_order_next_execution = import_cancel_order_cron_exist.nextcall or False
+            self.shopify_import_cancel_order_user_id = import_cancel_order_cron_exist.user_id.id or False
 
     def update_order_status_cron_field(self, instance):
         """
@@ -251,6 +289,7 @@ class ShopifyCronConfigurationEpt(models.TransientModel):
             self.setup_shopify_inventory_export_cron(instance)
             self.setup_shopify_import_order_cron(instance)
             self.setup_shopify_import_shipped_order_cron(instance)
+            self.setup_shopify_import_cancel_order_cron(instance)
             self.setup_shopify_update_order_status_cron(instance)
             self.setup_shopify_payout_report_cron(instance)
             # Below code is used for only onboarding panel purpose.
@@ -279,7 +318,7 @@ class ShopifyCronConfigurationEpt(models.TransientModel):
                                              self.shopify_inventory_export_user_id)
             vals.update({'nextcall': self.shopify_inventory_export_next_execution or nextcall.strftime('%Y-%m-%d '
                                                                                                        '%H:%M:%S'),
-                         'code': "model.update_stock_in_shopify(ctx={'shopify_instance_id':%d})" % instance.id,
+                         'code': "model.shopify_export_stock_queue(ctx={'shopify_instance_id':%d})" % instance.id,
                          })
 
             if cron_exist:
@@ -367,6 +406,44 @@ class ShopifyCronConfigurationEpt(models.TransientModel):
                 vals.update({'name': name})
                 new_cron = core_cron.copy(default=vals)
                 name = 'ir_cron_shopify_auto_import_shipped_order_instance_%d' % (instance.id)
+                self.create_ir_module_data(name, new_cron)
+        else:
+            if cron_exist:
+                cron_exist.write({'active': False})
+        return True
+
+    def setup_shopify_import_cancel_order_cron(self, instance):
+        """
+        Cron for auto Import Cancel Orders
+        @param : instance
+        @return : True
+        @author: Nilam kubavat @Emipro Technologies Pvt. Ltd on date 11 July 2022.
+        """
+        try:
+            cron_exist = self.env.ref(
+                'shopify_ept.ir_cron_shopify_auto_import_cancel_order_instance_%d' % instance.id)
+        except:
+            cron_exist = False
+        if self.shopify_cancel_order_auto_import:
+            nextcall = datetime.now() + _intervalTypes[self.shopify_import_cancel_order_interval_type](
+                self.shopify_import_cancel_order_interval_number)
+            vals = self.prepare_val_for_cron(self.shopify_import_cancel_order_interval_number,
+                                             self.shopify_import_cancel_order_interval_type,
+                                             self.shopify_import_cancel_order_user_id)
+            vals.update(
+                {'nextcall': self.shopify_import_cancel_order_next_execution or nextcall.strftime('%Y-%m-%d %H:%M:%S'),
+                 'code': "model.import_cancel_order_cron_action(ctx={'shopify_instance_id':%d})" % instance.id,
+                 })
+            if cron_exist:
+                vals.update({'name': cron_exist.name})
+                cron_exist.write(vals)
+            else:
+                core_cron = self.check_core_shopify_cron("shopify_ept.ir_cron_shopify_auto_import_cancel_order")
+
+                name = instance.name + ' : ' + core_cron.name
+                vals.update({'name': name})
+                new_cron = core_cron.copy(default=vals)
+                name = 'ir_cron_shopify_auto_import_cancel_order_instance_%d' % (instance.id)
                 self.create_ir_module_data(name, new_cron)
         else:
             if cron_exist:
