@@ -6,8 +6,17 @@
             <link rel="stylesheet" type="text/scss"
                   href="/common_connector_library/static/src/scss/graph_widget_ept.scss"/>
             <link rel="stylesheet" href="/common_connector_library/static/src/scss/on_boarding_wizards.css"/>
+            <link rel="stylesheet" href="/common_connector_library/static/src/scss/in_app_notification.scss"/>
             <script type="text/javascript"
                     src="/common_connector_library/static/src/js/graph_widget_ept.js"/>
+            <script type="text/javascript"
+                    src="/common_connector_library/static/src/js/in_app_widget.js"/>
+            <script type="text/javascript"
+                    src="/common_connector_library/static/src/js/enterprise.js"/>
+            <script type="text/javascript"
+                    src="/common_connector_library/static/src/js/community.js"/>
+            <script type="text/javascript"
+                    src="/common_connector_library/static/src/js/dom_ready.js"/>
         </xpath>
     </template>
 </odoo>

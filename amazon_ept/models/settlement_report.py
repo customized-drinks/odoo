@@ -1608,7 +1608,8 @@ class SettlementReportEpt(models.Model):
                         if report.instance_id and report.attachment_id:
                             report.with_context(is_auto_process=True).process_settlement_report_file()
                             self._cr.commit()
-                            report.with_context(is_auto_process=True).reconcile_remaining_transactions()
+                            if report.state != 'duplicate':
+                                report.with_context(is_auto_process=True).reconcile_remaining_transactions()
         return True
 
     def configure_statement_missing_fees(self):

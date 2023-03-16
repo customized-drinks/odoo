@@ -19,7 +19,36 @@
                                domain="[('amazon_marketplace_code','!=',False)]"
                                widget="selection" required="1"/>
                         <field name="company_id" widget="selection"/>
+                        <field name="update_notification"
+                                   readonly="context.get('is_already_instance_created', False)" widget="boolean_toggle"/>
                     </group>
+                </group>
+                <group>
+                    <p colspan="2" class="alert alert-warning" role="alert">
+                        <div style="color:#ff0000; font-size:15px;">
+                            <b>Important Note:</b>
+                        </div>
+                        <div class="d-inline-block w-100">
+                            <div class="row">
+                                <div class="col-11 p-0">
+                                    <ul>
+                                        <li>
+                                            If you choose to activate <b>Get Update Notification</b>, Emipro Server will
+                                            ask for details about your Odoo, including Company name, Company email,
+                                            Database UUID, and List of Emipro apps. Therefore, Emipro can inform you of
+                                            any app-related updates and fixes. You can disable this configuration at any
+                                            time.
+                                            Please check our privacy policy for more detail.
+                                            <a href='https://www.emiprotechnologies.com/iap-privacy-policy'
+                                               target="_blank">
+                                                Click Here
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </p>
                 </group>
                 <footer>
                     <button string="Create" type="object" name="test_amazon_connection"

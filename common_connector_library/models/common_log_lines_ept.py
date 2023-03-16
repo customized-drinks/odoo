@@ -24,7 +24,7 @@ class CommonLogLineEpt(models.Model):
         :param model_name: model_name
         :return: model_id
         """
-        model = self.env['ir.model'].search([('model', '=', model_name)])
+        model = self.env['ir.model'].sudo().search([('model', '=', model_name)])
         if model:
             return model.id
         return False

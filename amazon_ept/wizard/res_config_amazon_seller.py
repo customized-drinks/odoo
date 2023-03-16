@@ -38,6 +38,14 @@ class AmazonSellerConfig(models.TransientModel):
         verify to check if credit exist for that account than it will allow to create seller
         if credit not exist than it will raise popup to purchase credits for that account.
     """
+    update_notification = fields.Boolean(string="Get Update Notification?",
+                                         help="If Enable, then You will be notify for the latest version app.")
+
+    @api.model
+    def default_get(self, fields):
+        res = super(AmazonSellerConfig, self).default_get(fields)
+        res['update_notification'] = self.env['res.config.settings'].get_in_app_system_parameter()
+        return res
 
     def prepare_marketplace_kwargs(self, account):
         """
@@ -132,6 +140,7 @@ class AmazonSellerConfig(models.TransientModel):
         amazon_seller_obj = self.env['amazon.seller.ept']
         iap_account_obj = self.env['iap.account']
         seller_exist = amazon_seller_obj.search([('merchant_id', '=', self.merchant_id)])
+        seller = False
 
         if seller_exist:
             raise UserError(_('Seller already exist with given Credential.'))
@@ -175,6 +184,21 @@ class AmazonSellerConfig(models.TransientModel):
                 seller.auto_create_stock_adjustment_configuration()
             seller.update_user_groups()
 
+        # If update notification enable then it will set here
+        if seller and self.update_notification:
+            amazon_order_reference = response.get('order_reference')
+            customer_so_number = self.env['ir.config_parameter'].sudo().get_param(
+                'common_connector_library.customer_so_number')
+            all_order_refs = customer_so_number.replace(' ', '').rstrip(',').split(',') \
+                if customer_so_number else []
+
+            if amazon_order_reference and amazon_order_reference not in all_order_refs:
+                all_order_refs.append(amazon_order_reference)
+
+            order_refs_string = ' ,'.join(all_order_refs) if all_order_refs else False
+            config_setting = self.env['res.config.settings']
+            config_setting.update_system_param(self.update_notification, order_refs_string)
+            config_setting.enable_emipro_notification(self.update_notification)
         return True
 
     @staticmethod
