@@ -26,9 +26,17 @@ class CustomerAppNotificationSettings(models.TransientModel):
                                      default=False,
                                      config_parameter='common_connector_library.customer_so_number')
 
-    def execute(self):
-        self.enable_emipro_notification(self.app_update_notify_ept)
-        return super(CustomerAppNotificationSettings, self).execute()
+    @api.model
+    def create(self, vals):
+        ipc = self.env['ir.config_parameter'].sudo()
+        is_notify = ipc.get_param('common_connector_library.app_update_notification')
+        if is_notify != vals.get('app_update_notify_ept'):
+            self.enable_emipro_notification(vals.get('app_update_notify_ept'))
+        return super(CustomerAppNotificationSettings, self).create(vals)
+
+    # def execute(self):
+    #     self.enable_emipro_notification(self.app_update_notify_ept)
+    #     return super(CustomerAppNotificationSettings, self).execute()
 
     def enable_emipro_notification(self, notify):
         params = self.env['ir.config_parameter'].sudo()

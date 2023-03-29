@@ -66,13 +66,13 @@ class EmiproAppVersionDetails(models.Model):
                 status = response.get('status', [])
                 if status == 'success':
                     self.receive_app_updates(request_data)
+                    ipc = self.env['ir.config_parameter'].sudo()
+                    ipc.set_param('common_connector_library.last_update_time_by_emipro',
+                                  str(datetime.now() - timedelta(hours=1)))
                 elif status == 'failed':
                     pass
                 else:
                     raise UserError('Request limit reached for today.')
-                ipc = self.env['ir.config_parameter'].sudo()
-                ipc.set_param('common_connector_library.last_update_time_by_emipro',
-                              str(datetime.now() - timedelta(hours=1)))
         return True
 
     def receive_app_updates(self, details):

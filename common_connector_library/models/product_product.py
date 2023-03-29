@@ -257,7 +257,8 @@ class ProductProduct(models.Model):
         if bom_product_ids:
             bom_products = self.with_context(warehouse=warehouse.ids).browse(bom_product_ids)
             for product in bom_products:
-                actual_stock = getattr(product, 'free_qty') + getattr(product, 'incoming_qty')
+                actual_stock = getattr(product, 'free_qty') + getattr(product, 'incoming_qty') - getattr(product,
+                                                                                                         'outgoing_qty')
                 forcasted_qty.update({product.id:actual_stock})
 
         simple_product_list = list(set(product_list) - set(bom_product_ids))
