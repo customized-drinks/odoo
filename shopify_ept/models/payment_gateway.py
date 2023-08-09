@@ -84,29 +84,36 @@ class ShopifyPaymentGateway(models.Model):
 
         shopify_payment_gateway = self.search_or_create_payment_gateway(instance, gateway)
 
+        order_status = 'unshipped'
+        if order_response.get('fulfillment_status') and not order_response.get('fulfillment_status') == 'unfulfilled':
+            order_status = order_response.get('fulfillment_status')
         workflow_config = self.env['sale.auto.workflow.configuration.ept'].search(
             [('shopify_instance_id', '=', instance.id),
              ('payment_gateway_id', '=', shopify_payment_gateway.id),
-             ('financial_status', '=', order_response.get('financial_status'))])
+             ('financial_status', '=', order_response.get('financial_status')),
+             ('shopify_order_payment_status.status', '=', order_status)
+             ])
         if not workflow_config:
 
             message = "- Automatic order process workflow configuration not found for this order " \
                       "%s. \n - System tries to find the workflow based on combination of Payment " \
                       "Gateway(such as Manual,Credit Card, Paypal etc.) and Financial Status(such as Paid," \
-                      "Pending,Authorised etc.).\n - In this order Payment Gateway is %s and Financial Status is %s." \
+                      "Pending,Authorised etc.).\n - In this order Payment Gateway is %s , Financial Status is %s and order status is %s." \
                       " \n - You can configure the Automatic order process workflow " \
                       "under the menu Shopify > Configuration > Financial Status." % (order_response.get('name'),
                                                                                       gateway,
                                                                                       order_response.get(
-                                                                                          'financial_status'))
+                                                                                          'financial_status'),
+                                                                                      order_status)
             common_log_line_obj.shopify_create_order_log_line(message, model_id,
                                                               order_data_queue_line, log_book_id,
                                                               order_response.get('name'))
             if order_data_queue_line:
                 order_data_queue_line.write({'state': 'failed', 'processed_at': datetime.now()})
-            return shopify_payment_gateway, auto_workflow_id
+            return shopify_payment_gateway, auto_workflow_id, False
 
         auto_workflow_id = workflow_config.auto_workflow_id if workflow_config else False
+        payment_term = workflow_config.payment_term_id if workflow_config else False
         if auto_workflow_id and not auto_workflow_id.picking_policy:
             message = "- Picking policy decides how the products will be delivered, " \
                       "'Deliver all at once' or 'Deliver each when available'.\n- System found %s Auto Workflow, " \
@@ -121,4 +128,4 @@ class ShopifyPaymentGateway(models.Model):
                 order_data_queue_line.write({'state': 'failed', 'processed_at': datetime.now()})
             auto_workflow_id = False
 
-        return shopify_payment_gateway, auto_workflow_id
+        return shopify_payment_gateway, auto_workflow_id, payment_term

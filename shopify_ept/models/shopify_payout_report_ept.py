@@ -124,7 +124,7 @@ class ShopifyPaymentReportEpt(models.Model):
 
         transaction_all = shopify.Transactions().find(payout_id=self.payout_reference_id, limit=250)
         if len(transaction_all) == 250:
-            transaction_all = self.shopify_list_all_transcations(transaction_all)
+            transaction_all = self.shopify_list_all_transactions(transaction_all)
         for transaction in transaction_all:
             transaction_data = transaction.to_dict()
             transaction_vals = self.prepare_transaction_vals(transaction_data, self.instance_id)
@@ -144,20 +144,20 @@ class ShopifyPaymentReportEpt(models.Model):
         _logger.info("Transaction lines are added for %s.", self.payout_reference_id)
         return True
 
-    def shopify_list_all_transcations(self, result):
+    def shopify_list_all_transactions(self, result):
         """
-           This method used to call the page wise data import for payout report transcation from Shopify to Odoo.
+           This method used to call the page wise data import for payout report transactions from Shopify to Odoo.
            @param : self, result
            @author: Meera Sidapara @Emipro Technologies Pvt. Ltd on date 08/02/2022.
        """
-        transcations_list = []
+        transactions_list = []
         catch = ""
         while result:
             link = shopify.ShopifyResource.connection.response.headers.get("Link")
             if not link or not isinstance(link, str):
-                return transcations_list
+                return transactions_list
             page_info = ""
-            transcations_list += result
+            transactions_list += result
             for page_link in link.split(","):
                 if page_link.find("next") > 0:
                     page_info = page_link.split(";")[0].strip("<>").split("page_info=")[1]
@@ -172,7 +172,7 @@ class ShopifyPaymentReportEpt(models.Model):
                         raise UserError(error)
             if catch == page_info:
                 break
-        return transcations_list
+        return transactions_list
 
     def prepare_transaction_vals(self, data, instance):
         """
@@ -395,7 +395,7 @@ class ShopifyPaymentReportEpt(models.Model):
                         reference += self.payout_reference_id
                 else:
                     if order_id.name:
-                        name = transaction.transaction_type + "_" + order_id.name + "/" + transaction.transaction_id
+                        name = transaction.transaction_type + "_" + transaction.transaction_id
                 bank_line_vals = {
                     'name': name or reference,
                     'payment_ref': reference,
@@ -548,7 +548,29 @@ class ShopifyPaymentReportEpt(models.Model):
         @param statement_line: Record of bank statement line.
         @author: Maulik Barad on Date 07-Dec-2020.
         """
+        shopify_payout_report_line_obj = self.env['shopify.payout.report.line.ept']
+        sale_order_obj = self.env['sale.order']
+        shopify_payout_report_line_id = shopify_payout_report_line_obj.search(
+            [('transaction_id', '=', statement_line.payment_ref)])
+        sale_order_id = sale_order_obj.search(
+            ['|', ('shopify_order_id', '=', shopify_payout_report_line_id.source_order_id),
+             ('name', '=', statement_line.payment_ref), ('shopify_instance_id', '=', self.instance_id.id)], limit=1)
+        if sale_order_id:
+            shopify_payout_report_line_id.write({'order_id': sale_order_id.id})
+            statement_line.write({'sale_order_id': sale_order_id.id})
+            domain, invoice, log_line = self.check_for_invoice_refund(shopify_payout_report_line_id)
+            if invoice and invoice.move_type == "out_refund":
+                statement_line.update({"refund_invoice_id": invoice.id})
         order = statement_line.sale_order_id
+        if order and not shopify_payout_report_line_id:
+            shopify_payout_report_line_id = shopify_payout_report_line_obj.search(
+                [('transaction_id', '=', statement_line.shopify_transaction_id)])
+        if shopify_payout_report_line_id and shopify_payout_report_line_id.transaction_type == 'refund' \
+                and not statement_line.refund_invoice_id:
+            invoices = self.env['account.move'].search(
+                [('shopify_instance_id', '=', self.instance_id.id), ('invoice_origin', '=', order.name),
+                 ('move_type', '=', 'out_refund'), ('amount_total', '=', abs(statement_line.amount))])
+            return invoices
         if statement_line.refund_invoice_id:
             invoices = statement_line.refund_invoice_id
         else:
@@ -686,7 +708,9 @@ class ShopifyPaymentReportEpt(models.Model):
         _logger.info("Processing Bank Statement: %s.", bank_statement.name)
         if bank_statement.state == "open":
             bank_statement.button_post()
-
+        if bank_statement.state == 'confirm':
+            self.state = 'validated'
+            return True
         for statement_line in bank_statement.line_ids.filtered(lambda x: not x.is_reconciled):
             move_line_data = []
             move_line_total_amount = 0.0

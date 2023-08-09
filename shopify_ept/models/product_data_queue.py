@@ -109,7 +109,6 @@ class ShopifyProductDataQueue(models.Model):
         for result in results:
             if count == 125:
                 product_queue = self.shopify_create_product_queue(instance, skip_existing_product=skip_existing_product)
-                product_queue_list.append(product_queue.id)
                 message = "Product Queue Created", product_queue.name
                 order_data_queue_line.generate_simple_notification(message)
                 self._cr.commit()
@@ -119,6 +118,10 @@ class ShopifyProductDataQueue(models.Model):
                     product_queue.message_post(body=_('%s products are not imported') % ','.join(template_ids))
             self.shopify_create_product_data_queue_line(result, instance, product_queue)
             count = count + 1
+        if not product_queue.product_data_queue_lines:
+            product_queue.unlink()
+        else:
+            product_queue_list.append(product_queue.id)
         self._cr.commit()
         return product_queue_list
 
@@ -253,6 +256,10 @@ class ShopifyProductDataQueue(models.Model):
         image_import_state = 'done'
         if instance.sync_product_with_images:
             image_import_state = 'pending'
+        existing_product_data_queue = product_data_queue_line_obj.search(
+                [('product_data_id', '=', result.get('id')), ('shopify_instance_id', '=', instance.id),
+                 ('state', 'in', ['draft', 'failed'])])
+        existing_product_queue = existing_product_data_queue.product_data_queue_id
         product_queue_line_vals = {"product_data_id": result.get("id"),
                                    "shopify_instance_id": instance and instance.id or False,
                                    "name": result.get("title"),
@@ -260,7 +267,12 @@ class ShopifyProductDataQueue(models.Model):
                                    "product_data_queue_id": product_data_queue and product_data_queue.id or False,
                                    "shopify_image_import_state": image_import_state,
                                    }
-        product_data_queue_line_obj.create(product_queue_line_vals)
+        if not existing_product_data_queue:
+            product_data_queue_line_obj.create(product_queue_line_vals)
+        else:
+            existing_product_data_queue.write(product_queue_line_vals)
+            if not existing_product_queue.product_data_queue_lines:
+                existing_product_queue.unlink()
         return True
 
     def create_schedule_activity_for_product(self, queue_line, from_sale=False):

@@ -3,6 +3,7 @@
 
 from odoo import models
 
+
 class StockMove(models.Model):
     """Inherit model to set the instance and is shopify delivery order flag"""
     _inherit = "stock.move"
@@ -21,5 +22,6 @@ class StockMove(models.Model):
 
         for picking in self.picking_id:
             if not picking.shopify_instance_id and picking.sale_id and picking.sale_id.shopify_instance_id:
-                picking.write({'shopify_instance_id':picking.sale_id.shopify_instance_id.id})
+                picking.write(
+                    {'shopify_instance_id': picking.sale_id.shopify_instance_id.id, 'is_shopify_delivery_order': True})
         return res

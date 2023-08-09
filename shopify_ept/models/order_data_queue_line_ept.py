@@ -4,6 +4,7 @@ import json
 import logging
 import time
 from odoo import models, fields
+from .. import shopify
 
 _logger = logging.getLogger("Shopify Order Queue Line")
 
@@ -42,6 +43,28 @@ class ShopifyOrderDataQueueLineEpt(models.Model):
         :param order_queue_id: Record of order queue.
         @author: Maulik Barad on Date 10-Sep-2020.
         """
+        instance.connect_in_shopify()
+        order_data_queue_line_obj = self.env["shopify.order.data.queue.line.ept"]
+        # get transaction data call api
+        result = []
+        transactions = shopify.Transaction().find(order_id=order_dict.get('id'))
+        for transaction in transactions:
+            transaction_dict = transaction.to_dict()
+            result.append(transaction_dict)
+        order_data.update({'transaction': result})
+
+        # get fulfillment data call api
+
+        # shopify_order = shopify.Order().find(order_dict.get('id'))
+        # fulfillment_data = shopify_order.get('fulfillment_orders')
+        # new_order_data.update({'fulfillment_data': fulfillment_data})
+
+        order_data = json.dumps(order_data)
+
+        existing_order_queue_line = order_data_queue_line_obj.search(
+            [('shopify_order_id', '=', order_dict.get('id')), ('shopify_instance_id', '=', instance.id),
+             ('state', 'in', ['draft', 'failed'])])
+        existing_queue = existing_order_queue_line.shopify_order_data_queue_id
         order_queue_line_vals = {"shopify_order_id": order_dict.get("id", False),
                                  "shopify_instance_id": instance.id,
                                  "order_data": order_data,
@@ -49,7 +72,13 @@ class ShopifyOrderDataQueueLineEpt(models.Model):
                                  "customer_name": customer_name,
                                  "customer_email": customer_email,
                                  "shopify_order_data_queue_id": order_queue_id.id}
-        return self.create(order_queue_line_vals)
+        if not existing_order_queue_line:
+            self.create(order_queue_line_vals)
+        else:
+            existing_order_queue_line.write(order_queue_line_vals)
+            if not existing_queue.order_data_queue_line_ids:
+                existing_queue.unlink()
+        return True
 
     def create_order_data_queue_line(self, orders_data, instance, created_by="import"):
         """
@@ -63,6 +92,7 @@ class ShopifyOrderDataQueueLineEpt(models.Model):
         order_queue_list = []
 
         for order in orders_data:
+            fulfillment_data = order.get('fulfillment_orders')
             if created_by == "webhook":
                 order_queue, need_to_create_queue = self.search_webhook_order_queue(created_by, instance, order,
                                                                                     need_to_create_queue)
@@ -78,7 +108,9 @@ class ShopifyOrderDataQueueLineEpt(models.Model):
                 need_to_create_queue = False
                 _logger.info(message)
 
-            data = json.dumps(order)
+            data = json.loads(json.dumps(order))
+            data.update({'fulfillment_data': fulfillment_data})
+
             customer_name, customer_email = self.get_customer_name_and_email(order)
             self.create_order_queue_line(order, instance, data, customer_name, customer_email, order_queue)
             if created_by == "webhook" and len(order_queue.order_data_queue_line_ids) >= 50:

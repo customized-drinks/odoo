@@ -19,6 +19,7 @@ class ShopifyResPartnerEpt(models.Model):
         """
         This method is used to create a contact type customer.
         @author: Maulik Barad on Date 09-Sep-2020.
+        @change : add tag_ids by Nilam kubavat @Emipro Technologies Pvt. Ltd on date 11 July 2022.
         """
         partner_obj = self.env["res.partner"]
         common_log_line_obj = self.env["common.log.lines.ept"]
@@ -45,9 +46,15 @@ class ShopifyResPartnerEpt(models.Model):
 
         partner = self.search_shopify_partner(shopify_customer_id, shopify_instance_id)
 
+        tags = vals.get("tags").split(",") if vals.get("tags") != '' else vals.get("tags")
+        tag_ids = []
+        for tag in tags:
+            tag_ids.append(partner_obj.create_or_search_tag(tag))
+
         if partner:
             if not partner.email:
                 partner.write({"email": email})
+            partner.write({"category_id": tag_ids})
             return partner
 
         shopify_partner_values = {"shopify_customer_id": shopify_customer_id,
@@ -69,6 +76,7 @@ class ShopifyResPartnerEpt(models.Model):
             "customer_rank": 1,
             "is_shopify_customer": True,
             "type": "contact",
+            "category_id": tag_ids
         })
         partner = partner_obj.create(partner_vals)
 
@@ -157,10 +165,6 @@ class ShopifyResPartnerEpt(models.Model):
         country_code = vals.get("country_code")
         country = partner_obj.get_country(country_code)
 
-        lang = 'en_US'
-        if country_code == 'DE':
-            lang = 'de_DE'
-
         state = partner_obj.create_or_update_state_ept(country_code, state_code, zipcode, country)
 
         partner_vals = {
@@ -173,8 +177,7 @@ class ShopifyResPartnerEpt(models.Model):
             "zip": zipcode.strip() if zipcode else False,
             "state_id": state and state.id or False,
             "country_id": country and country.id or False,
-            "is_company": False,
-            "lang": lang
+            "is_company": False
         }
         update_partner_vals = partner_obj.remove_special_chars_from_partner_vals(partner_vals)
         return update_partner_vals

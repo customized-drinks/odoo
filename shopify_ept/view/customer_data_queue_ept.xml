@@ -14,7 +14,7 @@
                        widget="badge"/>
                 <field name="is_action_require" invisible="1"/>
                 <button string="Need manual interaction" icon="fa-exclamation-triangle text-danger"
-                        attrs="{'invisible': ['|',('is_action_require','=',False),('state','=','done')]}"/>
+                        attrs="{'invisible': ['|',('is_action_require','=',False),('state','=','completed')]}"/>
                 <field name="is_process_queue" invisible="1"/>
                 <field name="running_status"
                        attrs="{'invisible':[('is_process_queue', '=', False)]}"/>
@@ -42,7 +42,7 @@
                     <field name="is_process_queue" invisible="1"/>
                 </header>
                 <div class="alert alert-danger" role="alert" style="margin-bottom:0px;"
-                     attrs="{'invisible': ['|',('is_action_require','=',False),('state','=','done')]}">
+                     attrs="{'invisible': ['|',('is_action_require','=',False),('state','=','completed')]}">
                     <strong>
                         - Need to process this queue manually.
                         There are 3 attempts been made by automated action to process this queue,

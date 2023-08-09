@@ -158,6 +158,43 @@
                                     </b>
                                 </p>
                             </div>
+                            <div attrs="{'invisible':[('shopify_operation','!=','import_cancel_orders')]}">
+                                <p colspan="2" class="alert alert-warning" role="alert">
+                                    <b>
+                                        <u>
+                                            <h3 style="font-weight:bold;color:#7d5a29">Note :
+                                            </h3>
+                                        </u>
+                                        <ol>
+                                            <li>
+                                                It will start fetching Cancel Order data from Shopify store
+                                                and will cancel imported orders if imported orders are canceled on
+                                                Shopify store.
+                                            </li>
+                                            <li>
+                                                It will fetch the cancel orders for the dates specified in
+                                                'From Date' and 'To Date' fields below.
+                                            </li>
+                                            <li>
+                                                The default value for 'From Date' will be the last
+                                                execution date of this operation. It will be blank if the last
+                                                execution date is not found.
+                                            </li>
+                                            <li>
+                                                The default value for 'To Date' will be current date
+                                                and time.
+                                            </li>
+                                            <li>
+                                                For more details please check
+                                                <a href='https://docs.emiprotechnologies.com/shopify-odoo-connector/v15/shopify-orders-management/import-cancel-order.html'
+                                                   target="_blank">
+                                                    User Guide
+                                                </a>
+                                            </li>
+                                        </ol>
+                                    </b>
+                                </p>
+                            </div>
                             <div attrs="{'invisible':[('shopify_operation','!=','import_orders_by_remote_ids')]}">
                                 <p colspan="2" class="alert alert-warning" role="alert">
                                     <b>
@@ -419,17 +456,20 @@
                         </div>
                     </group>
                     <notebook
-                            attrs="{'invisible': [('shopify_operation', 'not in', ['sync_product','import_shipped_orders','import_unshipped_orders','import_orders_by_remote_ids','sync_product_by_remote_ids','export_stock','import_payout_report','import_products_from_csv'])]}">
+                            attrs="{'invisible': [('shopify_operation', 'not in', ['sync_product','import_shipped_orders','import_unshipped_orders','import_orders_by_remote_ids','sync_product_by_remote_ids','export_stock','import_payout_report','import_products_from_csv','import_cancel_orders'])]}">
                         <page string='Sync Option'>
                             <group name='sync_order_date_wise'
-                                   attrs="{'invisible':[('shopify_operation','not in',['import_shipped_orders','import_unshipped_orders','sync_product'])]}">
-                                <group>
+                                   attrs="{'invisible':[('shopify_operation','not in',['import_shipped_orders','import_unshipped_orders','sync_product','import_cancel_orders'])]}">
+                                <group name='sync_order_date_wise'
+                                       attrs="{'invisible':[('shopify_operation','not in',['import_shipped_orders','import_unshipped_orders','sync_product','import_cancel_orders'])]}">
                                     <field name="import_products_based_on_date"
                                            attrs="{'invisible':[('shopify_operation','!=','sync_product')],'required':[('shopify_operation','=','sync_product')]}"/>
                                     <field name='orders_from_date' style="width:60%"
-                                           attrs="{'required':[('shopify_operation','in',['import_shipped_orders','import_unshipped_orders','sync_product'])]}"/>
+                                           attrs="{'required':[('shopify_operation','in',['import_shipped_orders','import_unshipped_orders','sync_product','import_cancel_orders'])]}"/>
                                     <field name='orders_to_date' style="width:60%"
-                                           attrs="{'required':[('shopify_operation','in',['import_shipped_orders','import_unshipped_orders','sync_product'])]}"/>
+                                           attrs="{'required':[('shopify_operation','in',['import_shipped_orders','import_unshipped_orders','sync_product','import_cancel_orders'])]}"/>
+                                    <field name="skip_existing_product"
+                                           attrs="{'invisible':[('shopify_operation','!=','sync_product')]}"/>
                                 </group>
                                 <group name="sync_product"
                                        attrs="{'invisible':[('shopify_operation','!=','sync_product')]}">

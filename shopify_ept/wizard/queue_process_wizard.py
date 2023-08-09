@@ -19,6 +19,8 @@ class ShopifyQueueProcessEpt(models.TransientModel):
             self.sudo().process_customer_queue_manually()
         if queue_process == "process_order_queue_manually":
             self.sudo().process_order_queue_manually()
+        if queue_process == "process_export_stock_queue_manually":
+            self.sudo().process_export_stock_queue_manually()
 
     def process_product_queue_manually(self):
         """This method used to process the product queue manually. You can call the method from here :
@@ -69,6 +71,28 @@ class ShopifyQueueProcessEpt(models.TransientModel):
             order_queue_line_batch.process_import_order_queue_data()
         return True
 
+    def process_export_stock_queue_manually(self):
+        """
+        This method used to process the export stock queue manually.
+        @author: Yagnik Joshi @Emipro Technologies Pvt.Ltd on date 16-Sep-2022.
+        Task Id : 200765
+        """
+        model = self._context.get('active_model')
+        shopify_export_stock_queue_line_obj = self.env["shopify.export.stock.queue.line.ept"]
+        export_stock_queue_ids = self._context.get('active_ids')
+        if model == "shopify.order.data.queue.line.ept":
+            export_stock_queue_ids = shopify_export_stock_queue_line_obj.search(
+                [('id', 'in', export_stock_queue_ids)]).mapped("shopify_export_stock_queue_id").ids
+        self.env.cr.execute(
+            """update shopify_export_stock_queue_ept set is_process_queue = False where is_process_queue = True""")
+        self._cr.commit()
+        for export_stock_queue_id in export_stock_queue_ids:
+            export_stock_queue_line_obj = shopify_export_stock_queue_line_obj.search(
+                [("export_stock_queue_id", "=", export_stock_queue_id),
+                 ("state", "in", ('draft', 'failed'))])
+            export_stock_queue_line_obj.process_export_stock_queue_data()
+        return True
+
     def set_to_completed_queue(self):
         """
         This method used to change the queue(order, product and customer) state as completed.
@@ -81,6 +105,8 @@ class ShopifyQueueProcessEpt(models.TransientModel):
             self.set_to_completed_product_queue_manually()
         if queue_process == "set_to_completed_customer_queue":
             self.set_to_completed_customer_queue_manually()
+        if queue_process == "set_to_completed_export_stock_queue":
+            self.set_to_completed_export_stock_queue_manually()
 
     def set_to_completed_order_queue_manually(self):
         """This method used to set order queue as completed. You can call the method from here :
@@ -107,7 +133,7 @@ class ShopifyQueueProcessEpt(models.TransientModel):
         for product_queue_id in product_queue_ids:
             queue_lines = product_queue_id.product_data_queue_lines.filtered(
                 lambda line: line.state in ['draft', 'failed'])
-            queue_lines.write({'state': 'cancel','shopify_image_import_state':'done'})
+            queue_lines.write({'state': 'cancel', 'shopify_image_import_state': 'done', "synced_product_data": False})
             product_queue_id.message_post(
                 body=_("Manually set to cancel queue lines %s - ") % (queue_lines.mapped('product_data_id')))
         return True
@@ -125,7 +151,24 @@ class ShopifyQueueProcessEpt(models.TransientModel):
             queue_lines.write({'state': 'cancel'})
         return True
 
+    def set_to_completed_export_stock_queue_manually(self):
+        """This method used to set export stock queue as completed. You can call the method from here :
+            Shopify => Processes => Queues Logs => Export stock => SET TO COMPLETED.
+            @author: Yagnik Joshi @Emipro Technologies Pvt.Ltd on date 16-Sep-2022.
+            Task Id : 200765
+        """
+        export_stock_queue_ids = self._context.get('active_ids')
+        export_stock_queue_ids = self.env['shopify.export.stock.queue.ept'].browse(export_stock_queue_ids)
+        for stock_queue_id in export_stock_queue_ids:
+            queue_lines = stock_queue_id.export_stock_queue_line_ids.filtered(
+                lambda line: line.state in ['draft', 'failed'])
+            queue_lines.write({'state': 'cancel'})
+        return True
+
     def instance_active_archive(self):
+        """
+        :return:
+        """
         instances = self.env['shopify.instance.ept'].browse(self._context.get('active_ids'))
         for instance in instances:
             instance.shopify_action_archive_unarchive()

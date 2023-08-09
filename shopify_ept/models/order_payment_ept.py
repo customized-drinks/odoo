@@ -19,7 +19,8 @@ class ShopifyOrderPayment(models.Model):
                                        default=False)
     refund_amount = fields.Float(help="How much do you want to refund in the store")
     is_want_to_refund = fields.Boolean(
-        help="If mark: It will refund the amount in store which you choice. If unmarked: It will not refund the amount in store which you choice",
+        help="If mark: It will refund the amount in store which you choice. "
+             "If unmarked: It will not refund the amount in store which you choice",
         default=False)
 
     @api.onchange('refund_amount')
