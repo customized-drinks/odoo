@@ -47,3 +47,10 @@ class ProductPricelist(models.Model):
                 {name: new_record[name] for name in new_record._cache})
             product_pricelist_item = product_pricelist_item_obj.create(new_vals)
         return product_pricelist_item
+
+    def get_product_price_list_rule(self, product, quantity, partner):
+        """ add method for a get price and rule base on given pricelist and product
+            added by : Nilam Kubavat at 21st April 2023
+        """
+        rule = self.get_product_price_rule(product, quantity, partner, date=False, uom_id=product.uom_id.id)
+        return rule

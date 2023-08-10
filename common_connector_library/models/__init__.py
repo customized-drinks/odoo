@@ -22,3 +22,6 @@ from . import account_move
 from . import ir_cron
 from . import data_queue_mixin_ept
 from . import account_bank_statement_line
+from . import app_version
+from . import digest
+from . import delivery_carrier

@@ -45,6 +45,8 @@ class AccountFiscalPosition(models.Model):
         """
         if not country_id:
             return False
+        if self._context.get('is_b2b_amz_order', False):
+            vat_required = self._context.get('is_b2b_amz_order', False)
         base_domain = [('vat_required', '=', vat_required), ('company_id', 'in', [self.env.company.id, False]),
                        ('origin_country_ept', 'in', [origin_country_id, False])]
         null_state_dom = state_domain = [('state_ids', '=', False)]

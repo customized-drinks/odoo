@@ -3,6 +3,7 @@
 import logging
 from odoo import models, api, fields, _
 from odoo.tools.misc import format_date
+
 _logger = logging.getLogger("Common Connector")
 
 
@@ -107,9 +108,9 @@ class SaleOrder(models.Model):
                                                       and warehouse.company_id.partner_id.country_id.id or False)
             is_amz_customer = getattr(self.partner_id, 'is_amz_customer', False)
 
-            fiscal_position = self.env['account.fiscal.position'].with_context({
-                'origin_country_ept': origin_country_id, 'is_amazon_fpos': is_amz_customer}).with_company(
-                    warehouse.company_id.id).get_fiscal_position(self.partner_id.id, self.partner_shipping_id.id)
+            fiscal_position = self.env['account.fiscal.position'].with_context(
+                origin_country_ept=origin_country_id, is_amazon_fpos=is_amz_customer).with_company(
+                warehouse.company_id.id).get_fiscal_position(self.partner_id.id, self.partner_shipping_id.id)
 
         return fiscal_position
 
@@ -173,9 +174,9 @@ class SaleOrder(models.Model):
             if work_flow_process_record.validate_order:
                 order.validate_order_ept()
 
-            order_lines =  order.mapped('order_line').filtered(lambda l: l.product_id.invoice_policy == 'order')
+            order_lines = order.mapped('order_line').filtered(lambda l: l.product_id.invoice_policy == 'order')
             if not order_lines.filtered(lambda l: l.product_id.type == 'product') and len(
-                order.order_line)!= len(order_lines.filtered(lambda l: l.product_id.type in ['service','consu'])):
+                    order.order_line) != len(order_lines.filtered(lambda l: l.product_id.type in ['service', 'consu'])):
                 continue
 
             order.validate_and_paid_invoices_ept(work_flow_process_record)
@@ -254,7 +255,7 @@ class SaleOrder(models.Model):
                   ('reconciled', '=', False)]
         line_ids = move_line_obj.search([('move_id', '=', invoice.id)])
         to_reconcile = [line_ids.filtered( \
-                lambda line: line.account_internal_type == 'receivable')]
+            lambda line: line.account_internal_type == 'receivable')]
 
         for payment, lines in zip([payment_id], to_reconcile):
             payment_lines = payment.line_ids.filtered_domain(domain)
@@ -323,13 +324,16 @@ class SaleOrder(models.Model):
             product_uom = order_line.product_uom
 
         if product and product_qty and product_uom:
+            location_id = vendor_location.id if vendor_location else self.warehouse_id.lot_stock_id.id
+            if order_line.warehouse_id_ept:
+                location_id = order_line.warehouse_id_ept.lot_stock_id.id
             vals = {
-                'name': _('Auto processed move : %s') %product.display_name,
+                'name': _('Auto processed move : %s') % product.display_name,
                 'company_id': self.company_id.id,
                 'product_id': product.id if product else False,
                 'product_uom_qty': product_qty,
                 'product_uom': product_uom.id if product_uom else False,
-                'location_id': vendor_location.id if vendor_location else self.warehouse_id.lot_stock_id.id,
+                'location_id': location_id,
                 'location_dest_id': customers_location.id,
                 'state': 'confirmed',
                 'sale_line_id': order_line.id
